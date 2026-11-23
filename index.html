@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.v6.css">
+<link rel="stylesheet" href="css/style.v7.css">
 </head>
 <body>
 <header class="top">
@@ -16,6 +16,7 @@
     <nav class="tabs" id="tabs">
       <button data-page="guide" class="on">คู่มืออาชีพ</button>
       <button data-page="db">คลังไอเทม</button>
+      <button data-page="forge">ตีบวก & ออฟ</button>
       <button data-page="plan">วางแผนฟาร์ม</button>
     </nav>
     <div class="top__meta" id="topMeta"></div>
@@ -95,6 +96,24 @@
     <div id="dbCount" class="hint"></div>
   </section>
 
+  <!-- ══════════════════ PAGE 3.5 : ตีบวก & ออฟ ══════════════════ -->
+  <section class="page" id="page-forge">
+    <div class="lead">
+      <h1>ตีบวก +10 · แถวออฟ · ของแปดเปื้อน · ตีเหล็ก/คราฟต์</h1>
+      <p>ข้อมูลระบบอุปกรณ์ทั้งหมดจากวิกิ: อัตราสำเร็จ/ต้นทุนตีบวกทุกเกรด, แถวออฟครบ 41 แถว, คุณสมบัติของแปดเปื้อน 18 แบบ และสูตรคราฟต์อาวุธ</p>
+    </div>
+
+    <div class="dbtabs" id="forgeTabs">
+      <button data-tab="refine" class="on">ตีบวก +10</button>
+      <button data-tab="opts">แถวออฟ</button>
+      <button data-tab="taint">ของแปดเปื้อน</button>
+      <button data-tab="craft">ตีเหล็ก / คราฟต์</button>
+    </div>
+    <input type="search" id="forgeQ" placeholder="🔍 ค้นหา เช่น คริ, ทะลุเกราะ, ดาบ, แท่งดาว …">
+    <div class="filters" id="forgeFilters"></div>
+    <div id="forgeBox"></div>
+  </section>
+
   <!-- ══════════════════ PAGE 3 : วางแผนฟาร์ม ══════════════════ -->
   <section class="page" id="page-plan">
     <div class="lead">
@@ -120,7 +139,7 @@
 
 <footer class="foot">ข้อมูลอ้างอิงจาก <a href="https://play.nightcamp.app/wiki/" target="_blank" rel="noopener">วิกิ Night Camp</a> (SS2 v0.2) · ตัวเลข EXP/เวลาเป็นการประมาณการ สมมติฐานระบุไว้ในหน้าเครื่องมือ</footer>
 
-<script src="js/data.v6.js"></script>
-<script src="js/app.v6.js"></script>
+<script src="js/data.v7.js"></script>
+<script src="js/app.v7.js"></script>
 </body>
 </html>

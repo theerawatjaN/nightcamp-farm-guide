@@ -131,13 +131,62 @@ const races = Object.fromEntries(Object.entries(W.races || {}).map(([k, v]) => [
 const rarities = { common: 'ธรรมดา', rare: 'แรร์', epic: 'อีพิค', legend: 'เลเจนด์', fashion: 'แฟชั่น' };
 const jobsT = { 0: 'อาชีพเริ่มต้น', 1: 'อาชีพที่ 1', 2: 'อาชีพที่ 2', 3: 'ไฮคลาส' };
 
+// ---------- systems: refine / options / taint / craft ----------
+const thOptLabel = (label) => TH[label] || label;
+const SUBMAP = {
+  str: 'STR', agi: 'AGI', vit: 'VIT', int: 'INT', dex: 'DEX', luk: 'LUK',
+  ...(Object.fromEntries(Object.entries(W.races || {}).map(([k, v]) => [k, t(v)]))),
+  ...(Object.fromEntries(Object.entries(W.elements || {}).map(([k, v]) => [k, t(v)]))),
+  ...(Object.fromEntries(Object.entries((W.sys.en2 || {}).inflict || {}).map(([k, v]) => [k, t(v)]))),
+  ...(Object.fromEntries(Object.entries((W.sys.en2 || {}).spell || {}).map(([k, v]) => [k, t(v)]))),
+  ...(Object.fromEntries(Object.entries((W.sys.en2 || {}).st || {}).map(([k, v]) => [k, t(v[0])]))),
+};
+const POOL_TH = { W: 'อาวุธ', D: 'ชุดบน-ล่าง', H: 'หมวก', A: 'เครื่องประดับ' };
+const smeltGoods = W.s2.smelt ? W.s2.smelt.goods : {};
+const opts = Object.entries(W.sys.opts).map(([id, o]) => ({
+  id, g: o.g || 'atk',
+  label: thOptLabel((W.sys.en2.opt[id] || [id, ''])[0]),
+  unit: (W.sys.en2.opt[id] || [id, ''])[1] || '',
+  on: (o.on || '').split('').map((c) => POOL_TH[c] || c),
+  tiers: o.tiers, cap: o.cap || 0, special: !!o.special, fixed: !!o.fixed,
+  subs: (o.subs || []).map((s) => SUBMAP[s] || s),
+}));
+const traits = Object.entries((W.sys.en2 || {}).trait || {}).map(([id, [n, up, dn]]) => ({ id, n: t(n), up: t(up), dn: t(dn) }));
+const REFINE_KIND = {
+  metal: { n: 'อาวุธโลหะ · โล่ · เกราะหนัก', item: 'แท่งโลหะ' },
+  wood: { n: 'อาวุธไม้ (ดาบไม้/ธนู ฯลฯ)', item: 'แผ่นไม้' },
+  crystal: { n: 'ออร์บ · ตะเกียง · เครื่องประดับ', item: 'ผลึกเจียระไน' },
+  cloth: { n: 'เกราะผ้า · เกราะหนัง · หมวก', item: 'ผ้า' },
+  armour: { n: 'เกราะหนัก (ชุดเซ็ต)', item: 'แผ่นเกราะ' },
+};
+const refine = {
+  rates: W.sys.refine.tab,
+  cost: W.sys.refine.cost,
+  brk: W.sys.refine.brk,
+  kinds: Object.fromEntries(Object.entries(W.s2.refineNeeds).map(([kind, e]) => {
+    const rep = REFINE_KIND[kind] || { n: kind, item: kind };
+    const steps = (e.steps || []).map((grade) => grade.map((step) => step.map(([mid, q]) => ({ mat: MAT[mid] ? t(MAT[mid].n) : (smeltGoods[mid] ? t(smeltGoods[mid].n) : mid), q }))));
+    return [kind, { n: rep.n, item: rep.item, grades: steps }];
+  })),
+};
+const smeltList = Object.entries(smeltGoods).map(([id, g]) => ({ id, n: t(g.n), price: g.price, d: t(g.d) }));
+const craft = W.sys.craft.map((c) => ({
+  t: c.t, n: t(c.n),
+  list: c.list.filter((x) => x.mats).map((x) => ({
+    id: x.id, n: t(x.n), g: x.g ?? null, coins: x.coins ?? 0,
+    mats: Object.entries(x.mats).map(([mid, q]) => ({ n: MAT[mid] ? t(MAT[mid].n) : (smeltGoods[mid] ? t(smeltGoods[mid].n) : mid), q })),
+  })),
+}));
+
 const data = {
   meta: { season: W.season, at: W.at, built: new Date().toISOString() },
   wtypes, elements, regions, races, rarities, jobsT,
   jobs, skillNames, weapons, armors, monsters, maps, sets, runes, materials,
+  refine, opts, traits, craft, smelt: smeltList,
+  prices: { drill: W.sys.drill, stone: W.sys.stone },
 };
 
 const out = 'window.NC_DATA = ' + JSON.stringify(data) + ';';
 fs.mkdirSync(path.join(root, 'js'), { recursive: true });
-fs.writeFileSync(path.join(root, 'js/data.js'), out);
+fs.writeFileSync(path.join(root, 'js/data.v7.js'), out);
 console.log('written js/data.js', (out.length / 1e6).toFixed(2), 'MB ·', weapons.length, 'weapons ·', monsters.length, 'monsters ·', maps.length, 'maps ·', sets.length, 'sets ·', runes.length, 'runes');

@@ -45,7 +45,7 @@ function srcHtml(src) {
 }
 
 /* ---------- router ---------- */
-const pages = ['guide', 'db', 'plan'];
+const pages = ['guide', 'db', 'forge', 'plan'];
 $('#tabs').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; showPage(b.dataset.page); });
 function showPage(p) {
   pages.forEach((x) => { $('#page-' + x).classList.toggle('on', x === p); });
@@ -431,6 +431,71 @@ function openModal(id) {
   $('#modal').hidden = false;
 }
 
+/* ════════════════════════ PAGE 2.5 · ตีบวก & ออฟ ════════════════════════ */
+let forgeTab = 'refine';
+const forgeQ = $('#forgeQ'), forgeFilters = $('#forgeFilters'), forgeBox = $('#forgeBox');
+$('#forgeTabs').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; forgeTab = b.dataset.tab; $$('#forgeTabs button').forEach((x) => x.classList.toggle('on', x === b)); renderForge(); });
+forgeQ.addEventListener('input', renderForge);
+
+const GRADE_TH = ['เกรด 1', 'เกรด 2', 'เกรด 3', 'เกรด 4'];
+function renderForge() {
+  const q = forgeQ.value.trim();
+  if (forgeTab === 'refine') {
+    forgeFilters.innerHTML = '';
+    const rates = D.refine.rates, cost = D.refine.cost;
+    let html = `<div class="card" style="margin-bottom:12px"><b>กฎการตีบวก</b> (ซีซัน 2)
+      <div class="bonus" style="margin-top:6px">ป๋าหมูหริ่งตีบวกอาวุธ/เกราะ/หมวก/เครื่องประดับจาก +1 ถึง +10 · อาวุธแต่ละเลเวล ATK +4% (+40% ที่ +10) · เกราะ/หมวกได้ DEF +1 ทุกสองเลเวล และ HP +0.5% ต่อเลเวล · ไม่มีขั้นการันตีแล้ว พลาดเสียแค่ค่าตี · <b>+9/+10</b> พลาดแล้วขั้นลดลง 1 และมีโอกาส <b>${D.refine.brk['9']}% / ${D.refine.brk['10']}%</b> ที่ชิ้นจะแตก (เปิดใช้<b>หินกันแตก</b> — หลอมจากแกนดาว ×1 + แท่งดาว ×2 — เพื่อกันแตก) · อาวุธเรืองแสง: +5 ประกาย, +7 น้ำเงิน, +8 ม่วง, +9 ส้มทอง, +10 สายรุ้ง</div></div>`;
+    html += `<h3>โอกาสสำเร็จ (%)</h3><table class="src"><tr><th>ขั้น</th><th>${GRADE_TH.join('</th><th>')}</th></tr>`;
+    for (let s = 1; s <= 10; s++) html += `<tr><td><b>+${s}</b></td>${[1, 2, 3, 4].map((g) => `<td>${rates[g][s]}%</td>`).join('')}</tr>`;
+    html += '</table>';
+    html += `<h3 style="margin-top:14px">ค่าเหรียญต่อการตี (เหรียญ, ต่อครั้ง)</h3><table class="src"><tr><th>ขั้น</th><th>${GRADE_TH.join('</th><th>')}</th></tr>`;
+    for (let s = 0; s < 10; s++) html += `<tr><td><b>+${s + 1}</b></td>${[1, 2, 3, 4].map((g) => `<td>${cost[g][s].toLocaleString()}</td>`).join('')}</tr>`;
+    html += '</table>';
+    html += `<h3 style="margin-top:14px">วัสดุที่ใช้ตี (ต่อครั้ง)</h3>`;
+    for (const [kind, k] of Object.entries(D.refine.kinds)) {
+      html += `<div class="card setc" style="margin-bottom:10px"><h3>${esc(k.n)}</h3><table class="src"><tr><th>เกรด</th><th>ขั้น +1 → +10 (วัสดุต่อครั้ง)</th></tr>`;
+      k.grades.forEach((grade, gi2) => {
+        const brief = grade.map((step, i2) => '+(' + (i2 + 1) + '): ' + step.map((m) => m.mat + '×' + m.q).join(' + ')).join(' · ');
+        html += `<tr><td>${GRADE_TH[gi2]}</td><td>${esc(brief)}</td></tr>`;
+      });
+      html += `</table></div>`;
+    }
+    forgeBox.innerHTML = html;
+  } else if (forgeTab === 'opts') {
+    forgeFilters.innerHTML = `<label class="sel"><span>สวมได้ที่</span><select id="foPool"><option value="">ทั้งหมด</option><option>อาวุธ</option><option>ชุดบน-ล่าง</option><option>หมวก</option><option>เครื่องประดับ</option></select></label>`;
+    $('#foPool').onchange = renderForge;
+    const pool = $('#foPool').value;
+    const list = D.opts.filter((o) => (!pool || o.on.includes(pool)) && matches(q, o.label, o.id, o.subs.join(' ')));
+    const GROUP_TH = { atk: 'โจมตี', skill: 'สกิล', def: 'ป้องกัน', special: 'พิเศษ (ดรอปเท่านั้น)' };
+    const byGroup = {};
+    list.forEach((o) => { (byGroup[o.g || 'atk'] = byGroup[o.g || 'atk'] || []).push(o); });
+    forgeBox.innerHTML = `<div class="card" style="margin-bottom:12px"><b>กฎแถวออฟ</b>
+      <div class="bonus" style="margin-top:6px">อุปกรณ์ทุกชิ้นดรอปพร้อมแถวออฟ: อาวุธ <b>1/2/2/3</b> แถวตามเกรด · เสื้อกับกางเกง <b>1/1/2/2</b> · หมวกกับเครื่องประดับ <b>1</b> (ชิ้นจากบอสเพิ่มอีก 1) · แต่ละแถวสุ่มขั้น: <b>ธรรมดา 60% · ดี 30% · เทพ 10%</b> · ซีซัน 2 ลดค่าทุกแถวลงครึ่งหนึ่ง และจำกัดแถวสเตตัสไว้ที่ +10 ต่อแถว (FLEE 50, ร่าย 30%, ดาเมจคริ 100%) · ชิ้นหนึ่งมีได้สูงสุด <b>4 แถว</b> และชนิดเดียวกันได้ไม่เกิน <b>2</b></div></div>
+      <table class="src"><tr><th>แถวออฟ</th><th>ธรรมดา (60%)</th><th>ดี (30%)</th><th>เทพ (10%)</th><th>เพดาน</th><th>เปิดที่</th></tr>
+      ${Object.entries(byGroup).map(([g, arr]) => `<tr><td colspan="6" style="color:var(--acc);font-weight:700">${GROUP_TH[g] || g}</td></tr>` + arr.map((o) =>
+        `<tr><td><b>${esc(o.label)}</b>${o.unit === '%' ? ' <small>%</small>' : ''}${o.subs.length ? `<br><small>${esc(o.subs.join(' / '))}</small>` : ''}</td>${o.tiers.map((tv) => `<td>${tv[0] === tv[1] ? tv[0] : tv[0] + '–' + tv[1]}${o.unit}</td>`).join('')}<td>${o.cap ? (o.cap > 1 ? o.cap + o.unit : (o.cap * 100) + '%') : '–'}</td><td>${o.on.map(esc).join(', ')}</td></tr>`).join('')).join('')}</table>
+      <div class="card" style="margin-top:14px"><b>เจาะและสุ่มใหม่</b>
+        <div class="bonus" style="margin-top:6px">ป๋าหมูหริ่งเจาะแถวใหม่ให้ทุกชิ้น ราคา <b>6,000,000</b> เหรียญ + หินเจาะออฟ · ล็อกแถว 0/1/2/3 ใช้หิน <b>2/4/6/8</b> ก้อน + เหรียญ <b>30,000/45,000/75,000/120,000</b> · หินแต่ละครั้งมีโอกาสล้มเหลว <b>20%</b> (เสียทั้งหินและเหรียญ) และไม่มีแถวไหนเปลี่ยน</div>
+        <div class="bonus" style="margin-top:6px"><b>หินมาจากไหน:</b> หินออฟดรอปจากมอน <b>0.01%</b> (เฉพาะมอนที่เลเวลห่างไม่เกิน 10) · จากบอส <b>8%</b> · หีบ <b>1.5%</b> · หินเจาะจากมอน Lv50+ <b>0.0001%</b> · บอส <b>0.2%</b> · หีบทอง <b>0.5%</b> · หินออฟ (ผูกตัว) ได้จากภารกิจมือใหม่/เช็กอิน/หีบรายสัปดาห์</div>
+        <div class="bonus" style="margin-top:6px"><b>ขัดเกรด:</b> 10,000 / 30,000 / 80,000 / 160,000 เหรียญ ตามเกรดของชิ้น · ร้านผู้เล่นขายชิ้นนั้นทั้งชิ้น (แถวออฟ ตีบวก ประกายแสงจันทร์ รอยแปดเปื้อน ชื่อผู้สร้าง ไปด้วย)</div>
+      </div>`;
+  } else if (forgeTab === 'taint') {
+    forgeFilters.innerHTML = '';
+    const list = D.traits.filter((t2) => matches(q, t2.n, t2.up, t2.dn));
+    forgeBox.innerHTML = `<p class="card hint" style="margin-bottom:12px">ไอเทมที่ดรอปมีโอกาส <b>1 ใน 50</b> เป็น<b>ของแปดเปื้อน</b>: มีคุณสมบัติเด่น (ข้อดีแรง) พร้อมข้อเสียจริง แสดงบนชิ้นสีม่วงพร้อมเครื่องหมาย ☾ — แปดเปื้อนติดไปกับชิ้นนั้นตลอด (ในกระเป๋าและร้านค้า)</p>
+      <table class="src"><tr><th>คุณสมบัติ</th><th>ข้อดี</th><th>ข้อเสีย</th></tr>
+      ${list.map((t2) => `<tr><td><b>☾ ${esc(t2.n)}</b></td><td>${esc(t2.up)}</td><td style="color:var(--red)">${esc(t2.dn)}</td></tr>`).join('')}</table>`;
+  } else if (forgeTab === 'craft') {
+    forgeFilters.innerHTML = `<label class="sel"><span>ประเภทอาวุธ</span><select id="fcType"><option value="">ทั้งหมด</option>${D.craft.map((c) => `<option value="${c.t}">${esc(c.n)}</option>`).join('')}</select></label>`;
+    $('#fcType').onchange = renderForge;
+    const tsel = $('#fcType').value;
+    const list = D.craft.filter((c) => (!tsel || c.t === tsel) && matches(q, c.n, c.list.map((x) => x.n).join(' ')));
+    forgeBox.innerHTML = `<p class="card hint" style="margin-bottom:12px">คราฟต์ที่<b>เตาหลอม</b>ด้วยใบสั่งงาน — ใช้วัสดุจากการฟาร์ม/เหมือง/สกิลชีวิต · แสดงเฉพาะสูตรที่ตีได้เอง (ของดรอป/กาชาไม่แสดง)</p>` +
+      list.map((c) => `<div class="card setc"><h3>${esc(c.n)}</h3><table class="src"><tr><th>ไอเทม</th><th>เกรด</th><th>เหรียญ</th><th>วัสดุ</th></tr>
+        ${c.list.map((x) => `<tr><td><b>${esc(x.n)}</b></td><td>${x.g ? GRADE_TH[x.g - 1] : '–'}</td><td>${x.coins.toLocaleString()}</td><td>${x.mats.map((m) => esc(m.n) + '×' + m.q).join(' + ')}</td></tr>`).join('')}</table></div>`).join('') || '<p class="hint">ไม่พบสูตร</p>';
+  }
+}
+
 /* ════════════════════════ PAGE 3 · วางแผนฟาร์ม ════════════════════════ */
 const pJob = $('#pJob'), pLv = $('#pLv'), pLvN = $('#pLvN'), pSize = $('#pSize'), pGoal = $('#pGoal'), pMembers = $('#pMembers'), pBuffs = $('#pBuffs'), pOut = $('#pOut');
 pJob.innerHTML = D.jobs.map((j) => `<option value="${j.id}" ${j.id === 'firemage' ? 'selected' : ''}>${esc(j.n)}</option>`).join('');
@@ -663,6 +728,7 @@ function boot() {
   showPage(pages.includes(h) ? h : 'guide');
   openJob('firemage');
   renderDb();
+  renderForge();
   refreshMembers();
 }
 boot();
