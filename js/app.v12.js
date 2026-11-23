@@ -786,10 +786,16 @@ function bRenderPreview() {
   ctx.fillStyle = '#2b3550';
   ctx.fillRect(cx - 16, topY + bodyH, 12, H * .16);
   ctx.fillRect(cx + 4, topY + bodyH, 12, H * .16);
-  // torso
-  ctx.fillStyle = elc + 'cc';
+  // กางเกง + รองเท้า (sprite จริงทับขา)
+  if (B.eq.pants) drawItemSprite(ctx, B.eq.pants, cx - 27, topY + bodyH - 14, 54);
+  // torso (ชั้นใน)
+  ctx.fillStyle = '#39435f';
   ctx.beginPath(); ctx.moveTo(cx - 22, topY + 10); ctx.quadraticCurveTo(cx - 18, topY + bodyH - 4, cx - 14, topY + bodyH);
   ctx.lineTo(cx + 14, topY + bodyH); ctx.quadraticCurveTo(cx + 18, topY + bodyH - 4, cx + 22, topY + 10); ctx.closePath(); ctx.fill();
+  // เสื้อ (sprite จริงทับลำตัว)
+  if (B.eq.top) drawItemSprite(ctx, B.eq.top, cx - 32, topY + 2, 64);
+  // แถบสีธาตุอาชีพที่เอว (ให้เห็นสีประจำอาชีพแม้ไม่ใส่เสื้อ)
+  ctx.fillStyle = elc + '99'; ctx.fillRect(cx - 20, topY + bodyH - 8, 40, 4);
   // arms
   ctx.strokeStyle = '#ffe0b2'; ctx.lineWidth = 8; ctx.lineCap = 'round';
   ctx.beginPath(); ctx.moveTo(cx - 20, topY + 18); ctx.lineTo(cx - 34, topY + bodyH * .7); ctx.stroke();
