@@ -65,6 +65,7 @@ const gJob = $('#gJob'), gLv = $('#gLv'), gLvN = $('#gLvN');
       return `<optgroup label="${esc(root.n)}">${opts.map((x) => `<option value="${x.id}">${'　'.repeat(Math.max(0, x.tier - 1))}${esc(x.n)}${x.tier === 3 ? ' ★' : ''}</option>`).join('')}</optgroup>`;
     }).join('');
 })();
+gJob.addEventListener('change', (e) => openJob(e.target.value));
 const gWt = $('#gWt'), gEl = $('#gEl');
 gWt.innerHTML = '<option value="">ทั้งหมด</option>' + Object.entries(D.wtypes).map(([k, v]) => `<option value="${k}">${v.th}</option>`).join('');
 gEl.innerHTML = '<option value="">ทั้งหมด</option>' + Object.entries(D.elements).map(([k, v]) => `<option value="${k}">${v.th}</option>`).join('');
