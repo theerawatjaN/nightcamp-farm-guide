@@ -127,7 +127,28 @@ table.src th{color:var(--tx2);font-weight:600}
 .siminfo .eff{margin:4px 0}
 .siminfo .eff .ok{color:var(--grn)} .siminfo .eff .bad{color:var(--red)} .siminfo .eff .mid{color:var(--tx2)}
 
-/* plan */
+/* build simulator */
+.buildgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(330px,1fr));gap:12px;align-items:start}
+.strow{display:flex;gap:6px;align-items:center;margin:5px 0}
+.strow .stn{flex:1;font-size:.85rem} .strow .stn small{display:block;color:var(--tx2)}
+.strow .stv{min-width:34px;text-align:center;color:var(--acc);font-size:1rem}
+.strow .stv.over{color:var(--red)}
+.stbtn{background:var(--card2);border:1px solid var(--line);color:var(--tx);border-radius:6px;width:30px;height:26px;cursor:pointer;font:inherit;font-size:.8rem}
+.stbtn:hover{border-color:var(--acc)}
+.skgrp{margin:10px 0 4px;color:var(--acc);font-size:.9rem}
+.eqrow{display:flex;gap:10px;margin:10px 0;padding:8px;background:var(--bg2);border-radius:10px;align-items:flex-start}
+.eqpic{width:46px;height:46px;border-radius:8px;background:var(--card);display:flex;align-items:center;justify-content:center;flex:none}
+.eqopts{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
+.eqopts .sel select{min-width:120px;padding:4px 8px;font-size:.8rem}
+.eqopts .sel span{font-size:.68rem}
+.outgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px;margin-top:8px}
+.out{background:var(--bg2);border:1px solid var(--line);border-radius:10px;padding:8px 6px;text-align:center}
+.out b{display:block;font-size:1.05rem;color:var(--acc)}
+.out small{color:var(--tx2);font-size:.68rem}
+
+/* sprite icons */
+.ai{display:inline-block;vertical-align:middle;border-radius:6px}
+.ic .ai{border-radius:8px}
 .planform{margin-bottom:16px}
 .brktbl{width:100%;border-collapse:collapse;font-size:.85rem;background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden}
 .brktbl th,.brktbl td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}

@@ -18,6 +18,7 @@ const MAP = Object.fromEntries(W.maps.map((m) => [m.id, m]));
 const REGION = Object.fromEntries(W.regions.map((r) => [r.id, r]));
 const MAT = Object.fromEntries(W.materials.map((m) => [m.id, m]));
 const MAPSRC = Object.fromEntries(W.maps.map((m) => [m.id, m]));
+const A = W.atlas;
 const JOB = Object.fromEntries(W.jobs.map((j) => [j.id, j]));
 
 // parse "Lv 1–10", "Lv 25–40 · boss Lv 50", "Lv 16–22 · Secret dungeon", "Safe Zone"
@@ -105,8 +106,12 @@ const jobs = W.jobs.map((j) => ({
   maxJob: j.maxJob ?? 10, hp: j.hp ?? 0, sp: j.sp ?? 0,
   wt: j.wt || [],
   lines: (j.lines || []).map((l) => ({ id: l.id, n: t(l.n), el: l.el || '' })),
-  sk: (j.sk || []).map((s) => ({ id: s.id, n: t(s.n), max: s.max ?? 10, line: s.line || '', el: s.el || '', type: s.type || '', d: t(s.d), sp: s.sp || '', cd: s.cd || 0, active: !!s.active })),
+  sk: (j.sk || []).map((s) => ({ id: s.id, n: t(s.n), max: s.max ?? 10, line: s.line || '', el: s.el || '', type: s.type || '', d: t(s.d), sp: s.sp || '', cd: s.cd || 0, active: !!s.active, icon: s.icon || '' })),
 }));
+
+/* real EXP curve (Lv1→2 … Lv98→99) and HP level multiplier from the game data */
+const xp = W.s2.xp || null;
+const buildHp = (W.s2.build || {}).buildHp || null;
 
 // skill name lookup (across all jobs) for weapon skill bonuses
 const skillNames = {};
@@ -184,9 +189,11 @@ const data = {
   jobs, skillNames, weapons, armors, monsters, maps, sets, runes, materials,
   refine, opts, traits, craft, smelt: smeltList,
   prices: { drill: W.sys.drill, stone: W.sys.stone },
+  atlas: { items: A.items, skills: A.skills, mats: A.mats, mons: A.mons, jobs: A.jobs, meta: A.meta, hats128: W.hats128 },
+  xp, buildHp,
 };
 
 const out = 'window.NC_DATA = ' + JSON.stringify(data) + ';';
 fs.mkdirSync(path.join(root, 'js'), { recursive: true });
-fs.writeFileSync(path.join(root, 'js/data.v9.js'), out);
+fs.writeFileSync(path.join(root, 'js/data.v10.js'), out);
 console.log('written js/data.js', (out.length / 1e6).toFixed(2), 'MB ·', weapons.length, 'weapons ·', monsters.length, 'monsters ·', maps.length, 'maps ·', sets.length, 'sets ·', runes.length, 'runes');

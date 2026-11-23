@@ -2,6 +2,18 @@
 'use strict';
 const D = window.NC_DATA;
 
+/* ---------- real game icons (sprite atlas from the wiki) ---------- */
+const AI_IDX = {};
+for (const k of ['items', 'skills', 'mats', 'mons', 'jobs']) AI_IDX[k] = Object.fromEntries(D.atlas[k].map((id, i) => [id, i]));
+function aiHtml(kind, id, size = 40, cls = '') {
+  const i = AI_IDX[kind] && AI_IDX[kind][id];
+  if (i == null) return '';
+  const m = D.atlas.meta[kind], k2 = size / m.cell;
+  const x = (i % m.cols) * m.cell * k2, y = Math.floor(i / m.cols) * m.cell * k2;
+  const rows = Math.ceil(m.n / m.cols);
+  return `<i class="ai ${cls}" style="width:${size}px;height:${size}px;background:url(assets/data/wiki_${kind}.webp) -${x}px -${y}px/${m.cols * m.cell * k2}px ${rows * m.cell * k2}px no-repeat"></i>`;
+}
+
 /* ---------- tiny helpers ---------- */
 const $ = (s, r) => (r || document).querySelector(s);
 const $$ = (s, r) => Array.from((r || document).querySelectorAll(s));
@@ -45,7 +57,7 @@ function srcHtml(src) {
 }
 
 /* ---------- router ---------- */
-const pages = ['guide', 'db', 'forge', 'plan'];
+const pages = ['guide', 'db', 'forge', 'build', 'plan'];
 $('#tabs').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; showPage(b.dataset.page); });
 function showPage(p) {
   pages.forEach((x) => { $('#page-' + x).classList.toggle('on', x === p); });
@@ -85,7 +97,7 @@ function drawJobHead() {
   const mainEl = Object.keys(els).sort((a, b) => els[b] - els[a])[0] || 'neutral';
   const style = j.sk.filter((s) => s.type === 'magic').length > j.sk.filter((s) => s.type === 'phys').length ? 'เวทมนตร์' : j.sk.some((s) => s.type === 'phys') ? 'ประชิด' : 'ซัพพอร์ต';
   $('#gHead').innerHTML = `<div class="jobhead" style="--c:${EL.col(mainEl)}">
-    <div class="jobhead__pic">${ELICON[mainEl] || '🏕️'}</div>
+    <div class="jobhead__pic" style="padding:6px">${aiHtml('jobs', j.id, 108) || ELICON[mainEl] || '🏕️'}</div>
     <div><h2 style="margin:0">${esc(j.n)}</h2>
       <div class="tags"><span class="pill">${D.jobsT[j.tier]}</span><span class="pill">${style}</span>${cur.wts.map((w) => `<span class="pill">${WT(w)}</span>`).join('')}${elTag(mainEl)}</div>
       <p>${esc(j.d)}</p>
@@ -162,7 +174,8 @@ function lineWeapons(lineSkillIds) {
     .sort((a, b) => b.lv - a.lv);
 }
 function wepCard(w, wskBonus) {
-  return `<div class="wep" data-item="${w.id}"><div class="ic" style="--el:${EL.col(w.el)}">${WTICON[w.wt] || '🗡️'}</div>
+  const ic = aiHtml('items', w.id, 44) || `<span style="font-size:1.5rem">${WTICON[w.wt] || '🗡️'}</span>`;
+  return `<div class="wep" data-item="${w.id}"><div class="ic" style="--el:${EL.col(w.el)}">${ic}</div>
     <div class="nm" style="flex:1"><b>${esc(w.n)}</b>${kTag(w.k)}${rTag(w.r)}
       <small>${WT(w.wt)} · Lv ${w.lv} · ATK ${w.atk} · ${elTag(w.el)}</small>
       ${wskBonus ? `<small style="color:var(--pur)">${esc(D.skillNames[wskBonus[0]]?.n || wskBonus[0])} +${wskBonus[2]}%</small>` : ''}
@@ -184,7 +197,7 @@ function drawLines() {
     const skIds = new Set(j.sk.filter((s) => s.line === l.id).map((s) => s.id));
     const ws = lineWeapons(skIds);
     return `<div class="card"><div class="line-name">${ELICON[l.el] || ''} ${esc(l.n)}</div><div style="margin-bottom:4px">${badge(l.id)}</div>
-      ${j.sk.filter((s) => s.line === l.id).map((s) => `<div class="skl"><b>${esc(s.n)}</b> <span class="pill">${s.active ? 'ใช้งาน' : 'พาสซีฟ'} · Lv${s.max}${s.cd ? ' · CD ' + s.cd + 's' : ''}</span><small>${esc(s.d)}</small></div>`).join('')}
+      ${j.sk.filter((s) => s.line === l.id).map((s) => `<div class="skl"><span style="vertical-align:middle;margin-right:4px">${aiHtml('skills', s.icon, 28)}</span><b>${esc(s.n)}</b> <span class="pill">${s.active ? 'ใช้งาน' : 'พาสซีฟ'} · Lv${s.max}${s.cd ? ' · CD ' + s.cd + 's' : ''}</span><small>${esc(s.d)}</small></div>`).join('')}
       <h3 style="margin:10px 0 4px">อาวุธที่เสริมสายนี้</h3>
       ${ws.length ? ws.slice(0, 6).map((w) => wepCard(w, w.wsk.find((b) => b[1] === j.id && skIds.has(b[0])))).join('') : '<span class="hint">ยังไม่มีอาวุธที่เสริมสายนี้ในข้อมูล</span>'}
     </div>`;
@@ -399,7 +412,7 @@ function renderDb() {
       <label class="check"><input type="checkbox" id="fBoss" ${dbState.kind === 'boss' ? 'checked' : ''}><span>เฉพาะบอส</span></label>`;
     let list = D.monsters.filter((m) => (!dbState.el || m.el === dbState.el) && (dbState.kind !== 'boss' || m.boss) && matches(q, m.n, m.id, m.st));
     list.sort((a, b) => a.lv - b.lv);
-    dbBox.innerHTML = list.map((m) => `<div class="wep" data-item="${m.id}"><div class="ic" style="--el:${EL.col(m.el)}">${m.boss ? '👑' : ELICON[m.el]}</div>
+    dbBox.innerHTML = list.map((m) => `<div class="wep" data-item="${m.id}"><div class="ic">${aiHtml('mons', m.id, 44) || (m.boss ? '👑' : ELICON[m.el])}</div>
       <div class="nm" style="flex:1"><b>${esc(m.n)}</b>${m.boss ? ' <span class="tag r-legend">บอส</span>' : ''}<small>Lv ${m.lv} · ${elTag(m.el)} · เผ่า ${(D.races && D.races[m.race]) || m.race}</small>
       <small>HP ${m.hp} · EXP ${m.exp} · JEXP ${m.jexp}</small> ${m.rune ? `<small>🃏 รูน ${esc((D.runes.find((r) => r.id === m.rune[0]) || {}).n || '')} ${pct(m.rune[1])}</small>` : ''}
       ${dropLine(m)} </div></div>`).join('') || empty();
@@ -513,7 +526,7 @@ function openModal(id) {
     const w = D.weapons.find((x) => x.id === id), a = w ? null : D.armors.find((x) => x.id === id), m = MON[id], mp = MAP[id];
     if (w) {
       const wsk = (w.wsk || []).map((b) => `<div>${esc(D.skillNames[b[0]]?.n || b[0])} (อาชีพ ${esc((JOB[b[1]] || {}).n || b[1])}) <b style="color:var(--pur)">+${b[2]}%</b></div>`).join('');
-      B.innerHTML = `<h2>${WTICON[w.wt] || ''} ${esc(w.n)}</h2><div class="kv">
+      B.innerHTML = `<h2>${aiHtml('items', w.id, 48) || ''} ${esc(w.n)}</h2><div class="kv">
         <dt>ประเภท</dt><dd>${WT(w.wt)} · ${w.d ? esc(w.d) : ''}</dd>
         <dt>เลเวล</dt><dd>Lv ${w.lv}${w.g ? ' · เกรด ' + w.g : ''}${w.k ? ' · คลาส ' + kTag(w.k) : ''}</dd>
         <dt>ความหายาก</dt><dd>${rTag(w.r)}</dd>
@@ -524,7 +537,7 @@ function openModal(id) {
         <dt>แหล่งดรอป</dt><dd>${w.src ? (w.src.kind === 'g' ? '🎁 กาชา/ร้าน' : `${esc(MON[w.src.mon]?.n || w.src.mon)}${MON[w.src.mon]?.boss ? ' 👑' : ''} · โอกาส ${pct(w.src.chance)}<br>📍 ${MON[w.src.mon].maps.map((mid) => `${esc(MAP[mid]?.n || mid)} (${esc(MAP[mid]?.regionN || '')})`).join(' / ')}`) : 'ยังไม่ระบุ'}</dd>
       </div>`;
     } else if (a) {
-      B.innerHTML = `<h2>${slotIcon(a.s)} ${esc(a.n)}</h2><div class="kv">
+      B.innerHTML = `<h2>${slotIcon(a.s)} ${aiHtml('items', a.id, 44) || ''} ${esc(a.n)}</h2><div class="kv">
         <dt>ช่องสวมใส่</dt><dd>${slotTh(a.s)} · Lv ${a.lv}</dd>
         <dt>ความหายาก</dt><dd>${rTag(a.r)}</dd>
         ${a.d ? `<dt>รายละเอียด</dt><dd>${esc(a.d)}</dd>` : ''}
@@ -534,7 +547,7 @@ function openModal(id) {
         <dt>แหล่งดรอป</dt><dd>${a.src ? (a.src.kind === 'g' ? '🎁 กาชา/ร้าน' : `${esc(MON[a.src.mon]?.n || '')} · ${pct(a.src.chance)}`) : 'ยังไม่ระบุ'}</dd>
       </div>`;
     } else if (m) {
-      B.innerHTML = `<h2>${m.boss ? '👑' : ELICON[m.el]} ${esc(m.n)}</h2><div class="kv">
+      B.innerHTML = `<h2>${aiHtml('mons', m.id, 48) || (m.boss ? '👑' : ELICON[m.el])} ${esc(m.n)}</h2><div class="kv">
         <dt>เลเวล</dt><dd>${m.lv}</dd><dt>ธาตุ</dt><dd>${elTag(m.el)} (โจมตี ${EL.th(m.atkEl)})</dd>
         <dt>เผ่า</dt><dd>${(D.races && D.races[m.race]) || m.race}${m.boss ? ' · บอส' : ''}</dd>
         <dt>สถานะ</dt><dd>HP ${m.hp} · ATK ${m.atk[0]}–${m.atk[1]} · DEF ${m.def} · MDEF ${m.mdef} · HIT ${m.hit} · FLEE ${m.flee}</dd>
@@ -619,6 +632,202 @@ function renderForge() {
       list.map((c) => `<div class="card setc"><h3>${esc(c.n)}</h3><table class="src"><tr><th>ไอเทม</th><th>เกรด</th><th>เหรียญ</th><th>วัสดุ</th><th>ATK</th><th>ธาตุ</th><th>คุณสมบัติ</th></tr>
         ${c.list.map((x) => { const w = D.weapons.find((z) => z.id === x.id); return `<tr><td><b>${esc(x.n)}</b>${w && w.wsk ? wskLine(w) : ''}</td><td>${x.g ? GRADE_TH[x.g - 1] : '–'}</td><td>${x.coins.toLocaleString()}</td><td>${x.mats.map((m) => esc(m.n) + '×' + m.q).join(' + ')}</td><td>${w ? w.atk : '–'}</td><td>${w ? elTag(w.el) : '–'}</td><td>${w && w.ab ? esc(w.ab) : '–'} ${w ? cmpBtn(w) : ''}</td></tr>`; }).join('')}</table></div>`).join('') || '<p class="hint">ไม่พบสูตร</p>';
   }
+}
+
+/* ════════════════════════ PAGE 3.5 · จำลอง build ตัวละคร ════════════════════════ */
+const B = {
+  job: 'firemage', lv: 50, jlv: 50, spPerLv: 5,
+  stats: { str: 0, agi: 0, vit: 0, int: 0, dex: 0, luk: 0 },
+  skills: {},
+  eq: { weapon: '', top: '', pants: '', hat: '', acc: '' },
+  ref: { weapon: 0, top: 0, pants: 0, hat: 0, acc: 0 },
+  opt: { weapon: '', top: '', pants: '', hat: '', acc: '' },
+};
+const STAT_TH = { str: 'STR พลังโจมตีประชิด', agi: 'AGI ความเร็ว/หลบ', vit: 'VIT พลังชีวิต', int: 'INT พลังเวท', dex: 'DEX ความแม่น/ธนู', luk: 'LUK โชค/คริ' };
+const RANGED_WT = new Set(['bow', 'xbow', 'pistol', 'shotgun', 'instrument', 'whip']);
+const MAGIC_WT = new Set(['staff', 'orb', 'lantern', 'book', 'bell', 'torch']);
+const OPT_EFFECT = { atk: 'atkPct', matk: 'matkPct', hpPct: 'hpPct', spPct: 'spPct', crit: 'crit', critDmg: 'critDmg', flee: 'fleeFlat', hit: 'hitFlat', pen: 'pen', mpen: 'mpen', aspd: 'aspd', aspdAcc: 'aspd', def: null, hp: null };
+const SLOT_TH = { weapon: 'อาวุธ', top: 'เสื้อ', pants: 'กางเกง+รองเท้า', hat: 'หมวก', acc: 'เครื่องประดับ' };
+function bPath() { return pathOf(JOB[B.job]); }
+function bPathJobs() { return bPath().filter((x) => x.tier > 0 || x.id === 'traveler'); }
+function bTotalSP() {
+  const path = bPathJobs();
+  let sp = 0;
+  path.forEach((x, i) => { sp += (i === path.length - 1 ? Math.min(B.jlv, x.maxJob) : x.maxJob); });
+  return sp;
+}
+function bStatPts() { return B.spPerLv * Math.max(0, B.lv - 1); }
+function bCap() { return Math.min(80, Math.floor(30 + 0.55 * B.lv)); }
+function bEff(p) { const c = bCap(); return Math.min(p, c) + Math.max(0, p - c) * 0.4; }
+function bHPmul() { const t = D.buildHp || {}; let best = 1; for (const lv of Object.keys(t)) if (B.lv >= +lv) best = t[lv]; return best; }
+function bSkillsList() { return bPathJobs().flatMap((x) => x.sk.map((s) => ({ ...s, fromJob: x }))); }
+function bRenderStats() {
+  const box = $('#bStats');
+  const total = bStatPts(), used = Object.values(B.stats).reduce((a, b) => a + b, 0), left = total - used;
+  const cap = bCap();
+  box.innerHTML = `<h3>แต้มสเตตัส</h3><div class="hint">ได้ทั้งหมด <b>${total}</b> แต้ม (${B.spPerLv}/เลเวล × Lv${B.lv}) · คงเหลือ <b style="color:var(--acc)">${left}</b> · ซอฟต์แคปต่อสเตตัส ${cap} (เกินทำงาน 40%)</div>
+    ${Object.keys(STAT_TH).map((k) => `<div class="strow"><span class="stn">${k.toUpperCase()} <small>${esc(STAT_TH[k])}</small></span>
+      <button class="stbtn" data-st="${k}" data-d="-5">−5</button><button class="stbtn" data-st="${k}" data-d="-1">−1</button>
+      <b class="stv ${B.stats[k] > cap ? 'over' : ''}">${B.stats[k]}</b>
+      <button class="stbtn" data-st="${k}" data-d="1">+1</button><button class="stbtn" data-st="${k}" data-d="5">+5</button>
+      <small class="hint">${bEff(B.stats[k]).toFixed(1)} ผลจริง</small></div>`).join('')}`;
+  $$('.stbtn', box).forEach((b) => b.onclick = () => {
+    const k = b.dataset.st, d = +b.dataset.d;
+    B.stats[k] = Math.max(0, Math.min(99, B.stats[k] + d));
+    bRenderStats(); bCompute();
+  });
+}
+function bRenderSkills() {
+  const box = $('#bSkills');
+  const total = bTotalSP(), used = Object.values(B.skills).reduce((a, b) => a + b, 0);
+  box.innerHTML = `<h3>แต้มสกิล</h3><div class="hint">รวม <b>${total}</b> แต้ม (เลเวลอาชีพสะสมตามเส้นทาง) · ใช้ไป <b>${used}</b> · คงเหลือ <b style="color:var(--acc)">${total - used}</b></div>` +
+    bPathJobs().map((x) => `<div class="skgrp"><b>${esc(x.n)}</b> <small>(Job Lv สูงสุด ${x.maxJob})</small></div>` + x.sk.map((s) => {
+      const lv = B.skills[s.id] || 0;
+      return `<div class="strow"><span style="margin-right:4px">${aiHtml('skills', s.icon, 26)}</span><span class="stn"><b>${esc(s.n)}</b> <small>${s.active ? 'ใช้งาน' : 'พาสซีฟ'} · max ${s.max}</small></span>
+        <button class="stbtn" data-sk="${s.id}" data-d="-1">−</button><b class="stv">${lv}</b><button class="stbtn" data-sk="${s.id}" data-d="1">+</button></div>`;
+    }).join('')).join('');
+  $$('.stbtn', box).forEach((b) => b.onclick = () => {
+    const id = b.dataset.sk, d = +b.dataset.d;
+    const s = bSkillsList().find((x) => x.id === id);
+    const cur = B.skills[id] || 0;
+    const used = Object.values(B.skills).reduce((a, b2) => a + b2, 0);
+    if (d > 0 && used >= bTotalSP()) return;
+    B.skills[id] = Math.max(0, Math.min(s.max, cur + d));
+    bRenderSkills(); bCompute();
+  });
+}
+function bOptOptions(slot) {
+  const poolMap = { weapon: 'อาวุธ', top: 'ชุดบน-ล่าง', pants: 'ชุดบน-ล่าง', hat: 'หมวก', acc: 'เครื่องประดับ' };
+  return D.opts.filter((o) => o.on.includes(poolMap[slot]) && OPT_EFFECT[o.id]);
+}
+function bRenderEquip() {
+  const box = $('#bEquip');
+  box.innerHTML = `<h3>อุปกรณ์</h3>` + Object.keys(SLOT_TH).map((slot) => {
+    let items;
+    if (slot === 'weapon') items = D.weapons.filter((w) => cur.wts.includes(w.wt));
+    else items = D.armors.filter((a) => a.s === slot);
+    items = items.slice().sort((a, b) => a.lv - b.lv);
+    const selId = B.eq[slot];
+    const it = slot === 'weapon' ? D.weapons.find((w) => w.id === selId) : D.armors.find((a) => a.id === selId);
+    const over = it && it.lv > B.lv ? `<small style="color:var(--red)">⚠️ ไอเทม Lv${it.lv} สูงกว่าตัวละคร Lv${B.lv}</small>` : '';
+    const opts = bOptOptions(slot);
+    return `<div class="eqrow">
+      <div class="eqpic">${it ? aiHtml('items', it.id, 40) : ''}</div>
+      <div style="flex:1">
+        <label class="sel"><span>${SLOT_TH[slot]}${over ? '' : ''}</span><select data-eq="${slot}"><option value="">— ว่าง —</option>${items.map((x) => `<option value="${x.id}" ${selId === x.id ? 'selected' : ''}>${esc(x.n)} (Lv${x.lv}${x.atk ? ', ATK ' + x.atk : ''}${x.st && x.st.def ? ', DEF ' + x.st.def : ''})</option>`).join('')}</select></label>
+        ${over}
+        <div class="eqopts">
+          <label class="sel"><span>ตีบวก</span><select data-ref="${slot}"><option value="" ${!B.ref[slot] ? 'selected' : ''}>+0</option>${[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => `<option value="${n}" ${B.ref[slot] === n ? 'selected' : ''}>+${n}</option>`).join('')}</select></label>
+          <label class="sel"><span>แถวออฟ (ถ้ามี)</span><select data-opt="${slot}"><option value="">ไม่มี</option>${opts.map((o) => `<option value="${o.id}" ${B.opt[slot] === o.id ? 'selected' : ''}>${esc(o.label)}</option>`).join('')}</select></label>
+          ${B.opt[slot] ? `<label class="sel"><span>ขั้นออฟ</span><select data-otier="${slot}">${['ธรรมดา', 'ดี', 'เทพ'].map((t2, i2) => `<option value="${i2}" ${(B.otier && B.otier[slot]) === i2 ? 'selected' : ''}>${t2}</option>`).join('')}</select></label>` : ''}
+        </div>
+      </div></div>`;
+  }).join('');
+  $$('[data-eq]', box).forEach((s) => s.onchange = () => { B.eq[s.dataset.eq] = s.value; bRenderEquip(); bCompute(); });
+  $$('[data-ref]', box).forEach((s) => s.onchange = () => { B.ref[s.dataset.ref] = +s.value; bCompute(); });
+  $$('[data-opt]', box).forEach((s) => s.onchange = () => { B.opt[s.dataset.opt] = s.value; bRenderEquip(); bCompute(); });
+  $$('[data-otier]', box).forEach((s) => s.onchange = () => { B.otier = B.otier || {}; B.otier[s.dataset.otier] = +s.value; bCompute(); });
+}
+function bOptVal(slot) {
+  const id = B.opt[slot]; if (!id) return null;
+  const o = D.opts.find((x) => x.id === id); if (!o) return null;
+  const tier = (B.otier && B.otier[slot]) ?? 2;
+  const [mn, mx] = o.tiers[Math.min(2, tier)];
+  return { id, effect: OPT_EFFECT[id], val: mx, unit: o.unit };
+}
+function bCompute() {
+  const j = JOB[B.job], lv = B.lv;
+  const w = D.weapons.find((x) => x.id === B.eq.weapon) || null;
+  const eqSlots = ['top', 'pants', 'hat', 'acc'].map((s) => ({ slot: s, it: D.armors.find((a) => a.id === B.eq[s]) }));
+  // sums from equipment
+  let eqAtk = 0, eqDef = 0, eqMdef = 0, eqHp = 0, eqSp = 0, eqAtkPct = 0, eqMatkPct = 0, eqHpPct = 0, eqSpPct = 0, eqCrit = 0, eqFlee = 0, eqHit = 0, eqAspd = 0, eqPen = 0;
+  eqSlots.forEach(({ slot, it }) => {
+    if (!it) return;
+    const st = it.st || {};
+    eqDef += st.def || 0; eqMdef += st.mdef || 0; eqHp += st.hp || 0; eqSp += st.sp || 0;
+    eqAtk += st.atk || 0; eqCrit += st.crit ? Math.round(st.crit * 100) : 0; eqFlee += st.flee || 0; eqHit += st.hit || 0;
+    eqHpPct += st.hpPct || 0; eqSpPct += st.spPct || 0; eqAspd += st.aspd ? st.aspd * 100 : 0;
+    const refN = B.ref[slot];
+    eqDef += Math.floor(refN / 2);
+    eqHpPct += refN * 0.5;
+    const o = bOptVal(slot);
+    if (o) {
+      if (o.effect === 'atkPct') eqAtkPct += o.val;
+      if (o.effect === 'matkPct') eqMatkPct += o.val;
+      if (o.effect === 'hpPct') eqHpPct += o.val;
+      if (o.effect === 'spPct') eqSpPct += o.val;
+      if (o.effect === 'crit') eqCrit += o.val;
+      if (o.effect === 'fleeFlat') eqFlee += o.val;
+      if (o.effect === 'hitFlat') eqHit += o.val;
+      if (o.effect === 'aspd') eqAspd += o.val;
+      if (o.effect === 'pen') eqPen += o.val;
+    }
+  });
+  const wRef = B.ref.weapon;
+  const wOpt = bOptVal('weapon');
+  if (wOpt) {
+    if (wOpt.effect === 'atkPct') eqAtkPct += wOpt.val;
+    if (wOpt.effect === 'matkPct') eqMatkPct += wOpt.val;
+    if (wOpt.effect === 'crit') eqCrit += wOpt.val;
+    if (wOpt.effect === 'aspd') eqAspd += wOpt.val;
+  }
+  const strE = bEff(B.stats.str), agiE = bEff(B.stats.agi), vitE = bEff(B.stats.vit), intE = bEff(B.stats.int), dexE = bEff(B.stats.dex), lukE = bEff(B.stats.luk);
+  const magic = w && MAGIC_WT.has(w.wt), ranged = w && RANGED_WT.has(w.wt);
+  const wAtk = w ? w.atk * (1 + 0.04 * wRef) : 0;
+  const statPart = magic ? intE * 1.6 : ranged ? dexE * 1.6 : strE * 1.6;
+  const atk = wAtk + statPart + 0.6 * lv + eqAtk;
+  const atkPct = 1 + (eqAtkPct + (w && !magic ? 0 : 0)) / 100;
+  const atkTotal = Math.round(atk * atkPct);
+  const matk = magic ? Math.round((wAtk + intE * 1.6 + 0.6 * lv + eqAtk) * (1 + eqMatkPct / 100)) : Math.round((eqAtk) * (1 + eqMatkPct / 100));
+  const hpBase = 150 + (j.hp || 5) * lv + eqHp;
+  const maxHp = Math.round(hpBase * (1 + 0.01 * vitE) * (1 + eqHpPct / 100) * bHPmul());
+  const maxSp = Math.round((60 + (j.sp || 2) * lv + eqSp) * (1 + 0.01 * intE) * (1 + eqSpPct / 100));
+  const aspd = Math.min(150, 100 + 0.5 * agiE + eqAspd);
+  const crit = Math.min(100, 0.3 * lukE + eqCrit);
+  const critDmg = (1.4 + 0.004 * lukE).toFixed(2);
+  const acc = Math.min(100, 88 + 0.15 * dexE + eqHit);
+  const dodgeSoft = Math.min(50, 0.3 * agiE).toFixed(1);
+  const dodgeFull = Math.min(20, 0.15 * agiE).toFixed(1);
+  const dmgRed = Math.min(30, 0.2 * vitE).toFixed(1);
+  const castSpd = Math.min(50, 0.6 * dexE).toFixed(1);
+  const dmgType = w ? ({ melee: 'ฟัน', pierce: 'เจาะ', bash: 'ทุบ', magic: 'เวท' }[magic ? 'magic' : RANGED_WT.has(w.wt) ? 'pierce' : ['gsword', 'gaxe', 'hammer', 'lance', 'huuma', 'scythe', 'qstaff'].includes(w.wt) ? 'bash' : 'melee']) : '–';
+  $('#bOut').innerHTML = `<h3>ผลลัพธ์ build</h3>
+    <div class="outgrid">
+      <div class="out"><b>${maxHp.toLocaleString()}</b><small>HP สูงสุด${bHPmul() > 1 ? ' (×' + bHPmul() + ' โบนัสเลเวลสูง)' : ''}</small></div>
+      <div class="out"><b>${maxSp.toLocaleString()}</b><small>SP สูงสุด</small></div>
+      <div class="out"><b>${magic ? matk.toLocaleString() : atkTotal.toLocaleString()}</b><small>${magic ? 'MATK' : 'ATK'}${wRef ? ' (ตีบวก +' + wRef + ')' : ''}</small></div>
+      ${!magic ? `<div class="out"><b>${matk.toLocaleString()}</b><small>MATK (จากอุปกรณ์)</small></div>` : ''}
+      <div class="out"><b>${aspd.toFixed(0)}%</b><small>ความเร็วโจมตี</small></div>
+      <div class="out"><b>${crit.toFixed(1)}%</b><small>โอกาสคริติคอล</small></div>
+      <div class="out"><b>×${critDmg}</b><small>ดาเมจคริติคอล</small></div>
+      <div class="out"><b>${acc.toFixed(0)}%</b><small>ความแม่น</small></div>
+      <div class="out"><b>${dodgeSoft}%</b><small>หลบเฉียด</small></div>
+      <div class="out"><b>${dodgeFull}%</b><small>หลบทั้งดอก</small></div>
+      <div class="out"><b>−${dmgRed}%</b><small>ดาเมจที่โดน (VIT)</small></div>
+      <div class="out"><b>${castSpd}%</b><small>ความเร็วร่าย</small></div>
+      <div class="out"><b>${eqDef + Math.floor(wRef / 2)}</b><small>DEF รวม</small></div>
+      <div class="out"><b>${eqMdef}</b><small>MDEF รวม</small></div>
+      <div class="out"><b>${dmgType}</b><small>ชนิดดาเมจอาวุธ</small></div>
+    </div>
+    <div class="note" style="margin-top:8px">สูตรจากวิกิ (สเตตัส&อาวุธ): ${magic ? 'INT' : ranged ? 'DEX' : 'STR'} ×1.6 + 0.6×Lv, ซอฟต์แคป ${bCap()} ต่อสเตตัส (เกิน ×0.4), อาวุธตีบวก ATK +4%/เลเวล, เกราะ DEF +1/2 เลเวล + HP 0.5%/เลเวล · ${dmgType !== 'เวท' ? 'ชนิดดาเมจ: ทุบ×เกราะหนัก 1.25 · เจาะ×หนัง 1.25 · ฟัน×เนื้อ 1.25 · เวท×ภูต 1.25' : 'เวทโดนภูต ×1.25'} · ค่า HP/SP ฐานและผลสกิลพาสซีฟเป็นการประมาณ</div>`;
+}
+
+/* render build page */
+const bJob = $('#bJob'), bLv = $('#bLv'), bJobLv = $('#bJobLv');
+function bRenderAll() {
+  const j = JOB[B.job];
+  B.jlv = Math.min(B.jlv, j.maxJob);
+  $('#bJobLvN').textContent = B.jlv; $('#bLvN').textContent = B.lv;
+  bRenderStats(); bRenderSkills(); bRenderEquip(); bCompute();
+}
+function bInit() {
+  bJob.innerHTML = D.jobs.map((j) => `<option value="${j.id}" ${j.id === B.job ? 'selected' : ''}>${esc(j.n)}</option>`).join('');
+  bJob.onchange = () => { B.job = bJob.value; B.skills = {}; B.eq = { weapon: '', top: '', pants: '', hat: '', acc: '' }; B.ref = { weapon: 0, top: 0, pants: 0, hat: 0, acc: 0 }; B.opt = { weapon: '', top: '', pants: '', hat: '', acc: '' }; cur.wts = wtsOf(JOB[B.job]); bRenderAll(); };
+  bLv.oninput = () => { B.lv = +bLv.value; bRenderAll(); };
+  bJobLv.oninput = () => { B.jlv = +bJobLv.value; bRenderAll(); };
+  $('#bSpPerLv').onchange = (e) => { B.spPerLv = +e.target.value; bRenderStats(); bCompute(); };
+  cur.wts = wtsOf(JOB[B.job]);
+  bRenderAll();
 }
 
 /* ════════════════════════ PAGE 3 · วางแผนฟาร์ม ════════════════════════ */
@@ -731,8 +940,8 @@ pSize.addEventListener('change', refreshMembers);
 pJob.addEventListener('change', refreshBuffs);
 refreshMembers();
 
-/* exp curve — ประมาณการ (เกมยังไม่เปิดเผยตารางจริง) */
-const expToNext = (lv) => Math.round(35 * Math.pow(lv, 1.65));
+/* exp curve — ตาราง EXP จริงจากข้อมูลเกม (Lv1→2 … Lv98→99) */
+const expToNext = (lv) => (D.xp && D.xp[lv - 1]) ?? Math.round(35 * Math.pow(lv, 1.65));
 $('#pGo').addEventListener('click', buildPlan);
 
 function buildPlan() {
@@ -811,7 +1020,7 @@ function buildPlan() {
     ${goal !== 'lv' ? `<h2 style="margin-top:20px">รายการไอเทมเป้าหมาย (จากเลเวลตอนนี้)</h2>
       <table class="brktbl"><tr><th>ประเภท</th><th>ไอเทม</th><th>มอนที่ดรอป</th><th>โอกาส</th><th>ฆ่าต้องการ</th><th>เวลา ประมาณ</th></tr>
       ${targets.map((t) => `<tr><td>${esc(t.type)}</td><td>${esc(t.n)}</td><td>${t.mon ? esc(t.mon.n) : '?'}${t.mon?.boss ? ' 👑' : ''}<br><small>📍 ${t.mon ? t.mon.maps.map((mid) => esc(MAP[mid]?.n || mid)).join(' / ') : ''}</small></td><td>${pct(t.chance)}</td><td>${Math.ceil(1 / t.chance).toLocaleString()} ตัว</td><td>${Math.ceil(1 / t.chance / killRate / 60)} ชม.</td></tr>`).join('')}</table>` : ''}
-    <p class="note" style="margin-top:14px">สมมติฐาน: อัตราฆ่าพื้นฐาน 7 ตัว/นาที/ปาร์ตี้, สมาชิกเพิ่ม 1 คน +15% อัตราฆ่า, สกิลบัพดาเมจ/ฮีล/ยูทิลิตี้คิดเป็นปัจจัยคูณตามตารางด้านบน (ประมาณการจากผลสกิลจริงในวิกิ), EXP ต่อเลเวลเป็นเส้นโค้งประมาณการ (เกมยังไม่เปิดเผยตารางจริง), EXP มอนจากวิกิ ค่าจริงขึ้นกับการเล่นจริง</p>`;
+    <p class="note" style="margin-top:14px">อัตราฆ่า: พื้นฐาน 7 ตัว/นาที/ปาร์ตี้, สมาชิกเพิ่ม 1 คน +15%, สกิลบัพดาเมจ/ฮีล/ยูทิลิตี้คิดเป็นปัจจัยคูณตามตารางด้านบน (ประมาณการจากผลสกิลจริงในวิกิ) · <b>EXP ต่อเลเวลใช้ตารางจริงของซีซัน 2</b> (Lv2 = 331 … Lv99 = 7,900,869) · EXP มอนจากวิกิ ค่าจริงขึ้นกับการเล่นจริง</p>`;
 
   // wire the plan canvas reveal
 }
@@ -854,6 +1063,7 @@ function boot() {
   openJob('firemage');
   renderDb();
   renderForge();
+  bInit();
   refreshMembers();
 }
 boot();
