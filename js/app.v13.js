@@ -641,7 +641,8 @@ const B = {
   skills: {},
   eq: { weapon: '', top: '', pants: '', hat: '', acc: '' },
   ref: { weapon: 0, top: 0, pants: 0, hat: 0, acc: 0 },
-  opt: { weapon: '', top: '', pants: '', hat: '', acc: '' },
+  opt: { weapon: [], top: [], pants: [], hat: [], acc: [] },
+  otier: {},
 };
 const STAT_TH = { str: 'STR พลังโจมตีประชิด', agi: 'AGI ความเร็ว/หลบ', vit: 'VIT พลังชีวิต', int: 'INT พลังเวท', dex: 'DEX ความแม่น/ธนู', luk: 'LUK โชค/คริ' };
 const RANGED_WT = new Set(['bow', 'xbow', 'pistol', 'shotgun', 'instrument', 'whip']);
@@ -696,6 +697,14 @@ function bRenderSkills() {
     bRenderSkills(); bCompute();
   });
 }
+function bOptVals(slot) {
+  return (B.opt[slot] || []).map((id, idx) => {
+    const o = D.opts.find((x) => x.id === id); if (!o) return null;
+    const tier = (B.otier[slot + '_' + idx]) ?? 2;
+    const [mn, mx] = o.tiers[Math.min(2, tier)];
+    return { id, effect: OPT_EFFECT[id], val: mx, unit: o.unit };
+  }).filter(Boolean);
+}
 function bOptOptions(slot) {
   const poolMap = { weapon: 'อาวุธ', top: 'ชุดบน-ล่าง', pants: 'ชุดบน-ล่าง', hat: 'หมวก', acc: 'เครื่องประดับ' };
   return D.opts.filter((o) => o.on.includes(poolMap[slot]) && OPT_EFFECT[o.id]);
@@ -712,22 +721,32 @@ function bRenderEquip() {
     const it = slot === 'weapon' ? D.weapons.find((w) => w.id === selId) : D.armors.find((a) => a.id === selId);
     const over = it && it.lv > B.lv ? `<small style="color:var(--red)">⚠️ ไอเทม Lv${it.lv} สูงกว่าตัวละคร Lv${B.lv}</small>` : '';
     const opts = bOptOptions(slot);
+    const rows = B.opt[slot] || [];
+    const optRows = rows.map((id, idx) => {
+      const avail = opts.filter((o) => rows.filter((r) => r === o.id).length < 2 || o.id === id);
+      return `<div class="eqoptrow">
+        <label class="sel"><span>แถวออฟ ${idx + 1}</span><select data-optrow="${slot}" data-idx="${idx}"><option value="">— เลือกออฟ —</option>${avail.map((o) => `<option value="${o.id}" ${id === o.id ? 'selected' : ''}>${esc(o.label)}</option>`).join('')}</select></label>
+        ${id ? `<label class="sel"><span>ขั้น</span><select data-otier="${slot}" data-idx="${idx}">${['ธรรมดา', 'ดี', 'เทพ'].map((t2, i2) => `<option value="${i2}" ${(B.otier[slot + '_' + idx]) === i2 ? 'selected' : ''}>${t2}</option>`).join('')}</select></label>` : ''}
+        <button class="stbtn" data-optdel="${slot}" data-idx="${idx}" title="ลบแถวนี้">✕</button>
+      </div>`;
+    }).join('') + (rows.length < 4 ? `<button class="stbtn optadd" data-optadd="${slot}">+ เพิ่มแถวออฟ (${rows.length}/4)</button>` : '<small class="hint">ครบ 4 แถว (สูงสุด)</small>');
     return `<div class="eqrow">
       <div class="eqpic">${it ? (slot === 'hat' ? (aiHat(it.id, 40) || aiHtml('items', it.id, 40)) : aiHtml('items', it.id, 40)) : ''}</div>
       <div style="flex:1">
-        <label class="sel"><span>${SLOT_TH[slot]}${over ? '' : ''}</span><select data-eq="${slot}"><option value="">— ว่าง —</option>${items.map((x) => `<option value="${x.id}" ${selId === x.id ? 'selected' : ''}>${esc(x.n)} (Lv${x.lv}${x.atk ? ', ATK ' + x.atk : ''}${x.st && x.st.def ? ', DEF ' + x.st.def : ''})</option>`).join('')}</select></label>
+        <label class="sel"><span>${SLOT_TH[slot]}</span><select data-eq="${slot}"><option value="">— ว่าง —</option>${items.map((x) => `<option value="${x.id}" ${selId === x.id ? 'selected' : ''}>${esc(x.n)} (Lv${x.lv}${x.atk ? ', ATK ' + x.atk : ''}${x.st && x.st.def ? ', DEF ' + x.st.def : ''})</option>`).join('')}</select></label>
         ${over}
         <div class="eqopts">
           <label class="sel"><span>ตีบวก</span><select data-ref="${slot}"><option value="" ${!B.ref[slot] ? 'selected' : ''}>+0</option>${[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => `<option value="${n}" ${B.ref[slot] === n ? 'selected' : ''}>+${n}</option>`).join('')}</select></label>
-          <label class="sel"><span>แถวออฟ (ถ้ามี)</span><select data-opt="${slot}"><option value="">ไม่มี</option>${opts.map((o) => `<option value="${o.id}" ${B.opt[slot] === o.id ? 'selected' : ''}>${esc(o.label)}</option>`).join('')}</select></label>
-          ${B.opt[slot] ? `<label class="sel"><span>ขั้นออฟ</span><select data-otier="${slot}">${['ธรรมดา', 'ดี', 'เทพ'].map((t2, i2) => `<option value="${i2}" ${(B.otier && B.otier[slot]) === i2 ? 'selected' : ''}>${t2}</option>`).join('')}</select></label>` : ''}
         </div>
+        <div class="eqoptrows">${optRows}</div>
       </div></div>`;
   }).join('');
   $$('[data-eq]', box).forEach((s) => s.onchange = () => { B.eq[s.dataset.eq] = s.value; bRenderEquip(); bCompute(); });
   $$('[data-ref]', box).forEach((s) => s.onchange = () => { B.ref[s.dataset.ref] = +s.value; bCompute(); });
-  $$('[data-opt]', box).forEach((s) => s.onchange = () => { B.opt[s.dataset.opt] = s.value; bRenderEquip(); bCompute(); });
-  $$('[data-otier]', box).forEach((s) => s.onchange = () => { B.otier = B.otier || {}; B.otier[s.dataset.otier] = +s.value; bCompute(); });
+  $$('[data-optrow]', box).forEach((s) => s.onchange = () => { B.opt[s.dataset.optrow][+s.dataset.idx] = s.value; bRenderEquip(); bCompute(); });
+  $$('[data-otier]', box).forEach((s) => s.onchange = () => { B.otier[s.dataset.otier + '_' + s.dataset.idx] = +s.value; bCompute(); });
+  $$('[data-optdel]', box).forEach((b) => b.onclick = () => { const slot = b.dataset.optdel; B.opt[slot].splice(+b.dataset.idx, 1); bRenderEquip(); bCompute(); });
+  $$('[data-optadd]', box).forEach((b) => b.onclick = () => { if (B.opt[b.dataset.optadd].length < 4) { B.opt[b.dataset.optadd].push(''); bRenderEquip(); } });
 }
 function bOptVal(slot) {
   const id = B.opt[slot]; if (!id) return null;
@@ -747,6 +766,10 @@ let HATS_IMG = null;
 const hatsImg = new Image();
 hatsImg.onload = () => { HATS_IMG = hatsImg; bCompute(); };
 hatsImg.src = 'assets/data/wiki_hats128.webp';
+let JOBS_IMG = null;
+const jobsImg = new Image();
+jobsImg.onload = () => { JOBS_IMG = jobsImg; bCompute(); };
+jobsImg.src = 'assets/data/wiki_jobs.webp';
 function aiHat(id, size = 40) {
   const i = HI_IDX[id]; if (i == null) return '';
   const k = size / HATS.cell;
@@ -773,59 +796,59 @@ function bRenderPreview() {
   const els = {}; j.sk.forEach((s) => { if (s.el) els[s.el] = (els[s.el] || 0) + 1; });
   const mainEl = Object.keys(els).sort((a, b) => els[b] - els[a])[0] || 'neutral';
   const elc = (EL.col(mainEl) || '#ffb454').trim();
-  ctx.clearRect(0, 0, W, H);
-  const sky = ctx.createLinearGradient(0, 0, 0, H); sky.addColorStop(0, '#1a2340'); sky.addColorStop(1, '#0d1a2b');
-  ctx.fillStyle = sky; ctx.fillRect(0, 0, W, H);
-  ctx.fillStyle = 'rgba(255,255,255,.4)'; for (let i = 0; i < 26; i++) ctx.fillRect((i * 89.7) % W, (i * 47.3) % (H * .5), 2, 2);
-  ctx.fillStyle = '#16232e'; ctx.beginPath(); ctx.ellipse(W / 2, H * .86, 70, 16, 0, 0, 7); ctx.fill();
-  // aura
-  ctx.fillStyle = elc + '22'; ctx.beginPath(); ctx.arc(W / 2, H * .52, 74, 0, 7); ctx.fill();
+  /* ── พื้นหลังเรียบ ๆ + ตัวละครจริงจากเกม ── */
+  const bg = ctx.createRadialGradient(W / 2, H * .45, 20, W / 2, H * .5, H * .8);
+  bg.addColorStop(0, '#1d2639'); bg.addColorStop(1, '#0d1017');
+  ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
   const cx = W / 2;
-  const topY = H * .30, bodyH = H * .34;
-  // legs
-  ctx.fillStyle = '#2b3550';
-  ctx.fillRect(cx - 16, topY + bodyH, 12, H * .16);
-  ctx.fillRect(cx + 4, topY + bodyH, 12, H * .16);
-  // กางเกง + รองเท้า (sprite จริงทับขา)
-  if (B.eq.pants) drawItemSprite(ctx, B.eq.pants, cx - 27, topY + bodyH - 14, 54);
-  // torso (ชั้นใน)
-  ctx.fillStyle = '#39435f';
-  ctx.beginPath(); ctx.moveTo(cx - 22, topY + 10); ctx.quadraticCurveTo(cx - 18, topY + bodyH - 4, cx - 14, topY + bodyH);
-  ctx.lineTo(cx + 14, topY + bodyH); ctx.quadraticCurveTo(cx + 18, topY + bodyH - 4, cx + 22, topY + 10); ctx.closePath(); ctx.fill();
-  // เสื้อ (sprite จริงทับลำตัว)
-  if (B.eq.top) drawItemSprite(ctx, B.eq.top, cx - 32, topY + 2, 64);
-  // แถบสีธาตุอาชีพที่เอว (ให้เห็นสีประจำอาชีพแม้ไม่ใส่เสื้อ)
-  ctx.fillStyle = elc + '99'; ctx.fillRect(cx - 20, topY + bodyH - 8, 40, 4);
-  // arms
-  ctx.strokeStyle = '#ffe0b2'; ctx.lineWidth = 8; ctx.lineCap = 'round';
-  ctx.beginPath(); ctx.moveTo(cx - 20, topY + 18); ctx.lineTo(cx - 34, topY + bodyH * .7); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(cx + 20, topY + 18); ctx.lineTo(cx + 38, topY + bodyH * .55); ctx.stroke();
-  // head
-  ctx.fillStyle = '#ffe0b2'; ctx.beginPath(); ctx.arc(cx, topY - 4, 26, 0, 7); ctx.fill();
-  // hair by gender
-  ctx.fillStyle = B.gender === 'f' ? '#c98a5b' : '#3a3f52';
-  if (B.gender === 'f') {
-    ctx.beginPath(); ctx.arc(cx, topY - 10, 28, Math.PI * 1.05, Math.PI * 1.95); ctx.fill();
-    ctx.beginPath(); ctx.moveTo(cx - 26, topY - 8); ctx.quadraticCurveTo(cx - 34, topY + 30, cx - 18, topY + 34); ctx.lineTo(cx - 14, topY + 2); ctx.fill();
-    ctx.beginPath(); ctx.moveTo(cx + 26, topY - 8); ctx.quadraticCurveTo(cx + 34, topY + 30, cx + 18, topY + 34); ctx.lineTo(cx + 14, topY + 2); ctx.fill();
+  const pi = AI_IDX.jobs[j.id];
+  if (pi != null && JOBS_IMG) {
+    const m = D.atlas.meta.jobs;
+    const sx = (pi % m.cols) * m.cell, sy = Math.floor(pi / m.cols) * m.cell;
+    const ps = Math.min(H - 46, W - 24);
+    const x0 = cx - ps / 2, y0 = 26;
+    ctx.imageSmoothingEnabled = true;
+    ctx.drawImage(JOBS_IMG, sx, sy, m.cell, m.cell, x0, y0, ps, ps);
+    // ซ้อนอุปกรณ์บนตัวจริง: หมวก / เสื้อ / กางเกง / อาวุธ / เครื่องประดับ
+    ctx.globalAlpha = .92;
+    if (B.eq.top) drawItemSprite(ctx, B.eq.top, cx - 33, y0 + ps * .42, 66);
+    if (B.eq.pants) drawItemSprite(ctx, B.eq.pants, cx - 25, y0 + ps * .68, 50);
+    ctx.globalAlpha = 1;
+    if (B.eq.hat) drawHatSprite(ctx, B.eq.hat, cx - 32, y0 + ps * .04, 64);
+    if (B.eq.weapon) {
+      ctx.save(); ctx.translate(x0 + ps * .82, y0 + ps * .52); ctx.rotate(-0.8);
+      drawItemSprite(ctx, B.eq.weapon, -27, -27, 54);
+      ctx.restore();
+    }
+    if (B.eq.acc) drawItemSprite(ctx, B.eq.acc, x0 + ps * .84, y0 + ps * .18, 30);
   } else {
-    ctx.beginPath(); ctx.arc(cx, topY - 6, 26, Math.PI * 1.02, Math.PI * 1.98); ctx.fill();
-    ctx.fillRect(cx - 26, topY - 8, 52, 5);
+    // fallback: ตัวการ์ตูนวาดเอง
+    const topY = H * .32, bodyH = H * .28;
+    ctx.fillStyle = '#5a6a8a';
+    ctx.fillRect(cx - 16, topY + bodyH, 12, H * .14);
+    ctx.fillRect(cx + 4, topY + bodyH, 12, H * .14);
+    if (B.eq.pants) drawItemSprite(ctx, B.eq.pants, cx - 25, topY + bodyH - 9, 50);
+    ctx.fillStyle = '#46506e';
+    ctx.beginPath(); ctx.moveTo(cx - 23, topY + 10); ctx.quadraticCurveTo(cx - 19, topY + bodyH - 4, cx - 14, topY + bodyH);
+    ctx.lineTo(cx + 14, topY + bodyH); ctx.quadraticCurveTo(cx + 19, topY + bodyH - 4, cx + 23, topY + 10); ctx.closePath(); ctx.fill();
+    if (B.eq.top) drawItemSprite(ctx, B.eq.top, cx - 32, topY, 64);
+    ctx.strokeStyle = '#ffe0b2'; ctx.lineWidth = 9; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(cx - 21, topY + 18); ctx.lineTo(cx - 31, topY + bodyH * .78); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(cx + 21, topY + 18); ctx.lineTo(cx + 38, topY + bodyH * .58); ctx.stroke();
+    ctx.fillStyle = '#ffe0b2'; ctx.beginPath(); ctx.arc(cx, topY - 6, 29, 0, 7); ctx.fill();
+    ctx.fillStyle = B.gender === 'f' ? '#c98a5b' : '#3a3f52';
+    ctx.beginPath(); ctx.arc(cx, topY - 9, 28, Math.PI, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#20242e';
+    ctx.beginPath(); ctx.arc(cx - 10, topY - 4, 3, 0, 7); ctx.fill();
+    ctx.beginPath(); ctx.arc(cx + 10, topY - 4, 3, 0, 7); ctx.fill();
+    if (B.eq.hat) drawHatSprite(ctx, B.eq.hat, cx - 32, topY - 74, 64);
+    if (B.eq.weapon) {
+      ctx.save(); ctx.translate(cx + 44, topY + bodyH * .58); ctx.rotate(-0.85);
+      drawItemSprite(ctx, B.eq.weapon, -28, -28, 56);
+      ctx.restore();
+    }
+    if (B.eq.acc) drawItemSprite(ctx, B.eq.acc, cx + 66, topY + 2, 32);
   }
-  // face
-  ctx.fillStyle = '#20242e';
-  ctx.beginPath(); ctx.arc(cx - 9, topY - 2, 2.6, 0, 7); ctx.fill();
-  ctx.beginPath(); ctx.arc(cx + 9, topY - 2, 2.6, 0, 7); ctx.fill();
-  // hat on head
-  if (B.eq.hat) drawHatSprite(ctx, B.eq.hat, cx - 30, topY - 66, 60);
-  // weapon in right hand
-  if (B.eq.weapon) {
-    ctx.save(); ctx.translate(cx + 44, topY + bodyH * .55); ctx.rotate(-0.5);
-    drawItemSprite(ctx, B.eq.weapon, -24, -24, 48);
-    ctx.restore();
-  }
-  // acc sparkle
-  if (B.eq.acc) drawItemSprite(ctx, B.eq.acc, cx + 62, topY + 6, 30);
   ctx.font = '700 14px "Noto Sans Thai", sans-serif'; ctx.fillStyle = '#e8ecf7'; ctx.textAlign = 'center';
   ctx.fillText(j.n + ' Lv' + B.lv + ' · Job ' + B.jlv + ' · ' + (B.gender === 'f' ? 'หญิง' : 'ชาย'), W / 2, 24);
   ctx.textAlign = 'left';
@@ -851,8 +874,7 @@ function bCompute() {
     const refN = B.ref[slot];
     eqDef += Math.floor(refN / 2);
     eqHpPct += refN * 0.5;
-    const o = bOptVal(slot);
-    if (o) {
+    for (const o of bOptVals(slot)) {
       if (o.effect === 'atkPct') eqAtkPct += o.val;
       if (o.effect === 'matkPct') eqMatkPct += o.val;
       if (o.effect === 'hpPct') eqHpPct += o.val;
@@ -865,12 +887,11 @@ function bCompute() {
     }
   });
   const wRef = B.ref.weapon;
-  const wOpt = bOptVal('weapon');
-  if (wOpt) {
-    if (wOpt.effect === 'atkPct') eqAtkPct += wOpt.val;
-    if (wOpt.effect === 'matkPct') eqMatkPct += wOpt.val;
-    if (wOpt.effect === 'crit') eqCrit += wOpt.val;
-    if (wOpt.effect === 'aspd') eqAspd += wOpt.val;
+  for (const o of bOptVals('weapon')) {
+    if (o.effect === 'atkPct') eqAtkPct += o.val;
+    if (o.effect === 'matkPct') eqMatkPct += o.val;
+    if (o.effect === 'crit') eqCrit += o.val;
+    if (o.effect === 'aspd') eqAspd += o.val;
   }
   const strE = bEff(B.stats.str), agiE = bEff(B.stats.agi), vitE = bEff(B.stats.vit), intE = bEff(B.stats.int), dexE = bEff(B.stats.dex), lukE = bEff(B.stats.luk);
   const magic = w && MAGIC_WT.has(w.wt), ranged = w && RANGED_WT.has(w.wt);
@@ -924,7 +945,7 @@ function bRenderAll() {
 }
 function bInit() {
   bJob.innerHTML = D.jobs.map((j) => `<option value="${j.id}" ${j.id === B.job ? 'selected' : ''}>${esc(j.n)}</option>`).join('');
-  bJob.onchange = () => { B.job = bJob.value; B.skills = {}; B.eq = { weapon: '', top: '', pants: '', hat: '', acc: '' }; B.ref = { weapon: 0, top: 0, pants: 0, hat: 0, acc: 0 }; B.opt = { weapon: '', top: '', pants: '', hat: '', acc: '' }; bRenderAll(); };
+  bJob.onchange = () => { B.job = bJob.value; B.skills = {}; B.eq = { weapon: '', top: '', pants: '', hat: '', acc: '' }; B.ref = { weapon: 0, top: 0, pants: 0, hat: 0, acc: 0 }; B.opt = { weapon: [], top: [], pants: [], hat: [], acc: [] }; B.otier = {}; bRenderAll(); };
   bLv.oninput = () => { B.lv = +bLv.value; bRenderAll(); };
   bJobLv.oninput = () => { B.jlv = +bJobLv.value; bRenderAll(); };
   $('#bSpPerLv').onchange = (e) => { B.spPerLv = +e.target.value; bRenderStats(); bCompute(); };
