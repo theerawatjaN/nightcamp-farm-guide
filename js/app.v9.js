@@ -167,7 +167,7 @@ function wepCard(w, wskBonus) {
       <small>${WT(w.wt)} · Lv ${w.lv} · ATK ${w.atk} · ${elTag(w.el)}</small>
       ${wskBonus ? `<small style="color:var(--pur)">${esc(D.skillNames[wskBonus[0]]?.n || wskBonus[0])} +${wskBonus[2]}%</small>` : ''}
       ${w.ab ? `<small>${esc(w.ab)}</small>` : ''}
-      ${srcHtml(w.src)}</div></div>`;
+      ${srcHtml(w.src)}</div>${cmpBtn(w)}</div>`;
 }
 function drawLines() {
   const j = cur.job;
@@ -436,12 +436,68 @@ function bindDbFilters() {
   if (fReg) fReg.onchange = () => { dbState.reg = fReg.value; renderDb(); };
 }
 
+/* ---------- เปรียบเทียบอาวุธ (⚖️) ---------- */
+const cmpSet = new Set();
+function wskLine(w) {
+  return (w.wsk || []).map((b) => `<br><small style="color:var(--pur)">⭐ ${esc(D.skillNames[b[0]]?.n || b[0])}${(JOB[b[1]]) ? ' (' + esc(JOB[b[1]].n) + ')' : ''} +${b[2]}%</small>`).join('');
+}
+function cmpBtn(w) { return `<button class="cmpbtn ${cmpSet.has(w.id) ? 'on' : ''}" data-cmp="${w.id}" title="ใส่ตะกร้าเปรียบเทียบ">⚖️</button>`; }
+function renderCmpBar() {
+  const bar = $('#cmpbar');
+  if (!cmpSet.size) { bar.hidden = true; return; }
+  bar.hidden = false;
+  bar.innerHTML = `<span class="cmpt">⚖️ เปรียบเทียบ (${cmpSet.size}/4):</span>` +
+    [...cmpSet].map((id) => { const w = D.weapons.find((x) => x.id === id); return `<span class="chip">${WTICON[w.wt] || ''} ${esc(w.n)} <button class="cmpx" data-cmpx="${id}">✕</button></span>`; }).join('') +
+    `<button class="btn btn--sm" id="cmpOpen">เปรียบเทียบเลย</button><button class="btn btn--sm btn--ghost" id="cmpClear">ล้าง</button>`;
+  $('#cmpOpen').onclick = () => showCompare();
+  $('#cmpClear').onclick = () => { cmpSet.clear(); renderCmpBar(); $$('[data-cmp]').forEach((b) => b.classList.remove('on')); };
+  $$('.cmpx', bar).forEach((b) => b.onclick = () => { cmpSet.delete(b.dataset.cmpx); renderCmpBar(); $$(`[data-cmp="${b.dataset.cmpx}"]`).forEach((x) => x.classList.remove('on')); });
+}
+function srcText(w) {
+  if (!w.src) return 'ยังไม่ระบุ (คราฟต์ที่เตาหลอม — ดูแท็บตีเหล็ก/คราฟต์)';
+  if (w.src.kind === 'g') return '🎁 กาชา / ร้าน';
+  const m = MON[w.src.mon]; if (!m) return 'ยังไม่ระบุ';
+  return `${m.boss ? '👑 บอส' : '🎮 มอน'} ${m.n} · ${pct(w.src.chance)} · ${m.maps.map((mid) => MAP[mid]?.n || mid).join(' / ')}`;
+}
+function showCompare() {
+  const ws = [...cmpSet].map((id) => D.weapons.find((x) => x.id === id)).filter(Boolean);
+  if (!ws.length) return;
+  const bestAtk = Math.max(...ws.map((w) => w.atk));
+  const row = (label, cells, cls) => `<tr${cls ? ' class="' + cls + '"' : ''}><th>${label}</th>${cells.map((c) => `<td>${c}</td>`).join('')}</tr>`;
+  const wskCell = (w) => (w.wsk || []).map((b) => `${esc(D.skillNames[b[0]]?.n || b[0])} (${esc((JOB[b[1]] || {}).n || '')}) +${b[2]}%`).join('<br>') || '–';
+  const warn = ws.length > 1 && new Set(ws.map((w) => w.wt)).size > 1 ? '<p class="hint" style="margin:8px 0">⚠️ คุณเลือกอาวุธต่างประเภท — เปรียบเทียบเทียบเท่าควรใช้ประเภทเดียวกัน (เช่น ดาบคราฟ vs ดาบบอส)</p>' : '';
+  $('#modalBody').innerHTML = `<h2>⚖️ เปรียบเทียบอาวุธ</h2>${warn}
+    <table class="src cmptbl"><tbody>
+    ${row('ชื่อ', ws.map((w) => `<b>${WTICON[w.wt] || ''} ${esc(w.n)}</b>`))}
+    ${row('ประเภท', ws.map((w) => esc(WT(w.wt))))}
+    ${row('เลเวลที่ใช้', ws.map((w) => 'Lv ' + w.lv))}
+    ${row('เกรด / คลาส', ws.map((w) => (w.g ? 'เกรด ' + w.g : '–') + ' / ' + (w.k || '–')))}
+    ${row('ความหายาก', ws.map((w) => rTag(w.r)))}
+    ${row('ATK', ws.map((w) => w.atk === bestAtk ? `<b style="color:var(--grn)">${w.atk} ◀ สูงสุด</b>` : w.atk))}
+    ${row('ธาตุ', ws.map((w) => elTag(w.el)))}
+    ${row('คุณสมบัติพิเศษ', ws.map((w) => w.ab ? esc(w.ab) : '–'))}
+    ${row('เสริมสกิล', ws.map(wskCell))}
+    ${row('แหล่งที่ได้', ws.map((w) => esc(srcText(w))))}
+    </tbody></table>
+    <p class="note">ทริค: ดาบคราฟมักตีได้เองและ ATK ดีกว่าเกรดเดียวกัน, ดาบบอส/ดรอปมักมีคุณสมบัติพิเศษ+เสริมสกิลเด่น — เลือกตามงบและเป้าหมาย</p>`;
+  $('#modal').hidden = false;
+}
+
 /* ---------- item detail modal ---------- */
 function closeModal() { $('#modal').hidden = true; }
 $('#modalX').addEventListener('click', closeModal);
 $('#modal').addEventListener('click', (e) => { if (e.target === $('#modal')) closeModal(); });
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeModal(); });
 document.addEventListener('click', (e) => {
+  const cb = e.target.closest('[data-cmp]');
+  if (cb) {
+    e.stopPropagation();
+    const id = cb.dataset.cmp;
+    if (cmpSet.has(id)) cmpSet.delete(id); else if (cmpSet.size < 4) cmpSet.add(id);
+    cb.classList.toggle('on', cmpSet.has(id));
+    renderCmpBar();
+    return;
+  }
   const c = e.target.closest('[data-item]');
   if (c) openModal(c.dataset.item);
 });
@@ -559,9 +615,9 @@ function renderForge() {
     $('#fcType').onchange = renderForge;
     const tsel = $('#fcType').value;
     const list = D.craft.filter((c) => (!tsel || c.t === tsel) && matches(q, c.n, c.list.map((x) => x.n).join(' ')));
-    forgeBox.innerHTML = `<p class="card hint" style="margin-bottom:12px">คราฟต์ที่<b>เตาหลอม</b>ด้วยใบสั่งงาน — ใช้วัสดุจากการฟาร์ม/เหมือง/สกิลชีวิต · แสดงเฉพาะสูตรที่ตีได้เอง (ของดรอป/กาชาไม่แสดง)</p>` +
-      list.map((c) => `<div class="card setc"><h3>${esc(c.n)}</h3><table class="src"><tr><th>ไอเทม</th><th>เกรด</th><th>เหรียญ</th><th>วัสดุ</th></tr>
-        ${c.list.map((x) => `<tr><td><b>${esc(x.n)}</b></td><td>${x.g ? GRADE_TH[x.g - 1] : '–'}</td><td>${x.coins.toLocaleString()}</td><td>${x.mats.map((m) => esc(m.n) + '×' + m.q).join(' + ')}</td></tr>`).join('')}</table></div>`).join('') || '<p class="hint">ไม่พบสูตร</p>';
+    forgeBox.innerHTML = `<p class="card hint" style="margin-bottom:12px">คราฟต์ที่<b>เตาหลอม</b>ด้วยใบสั่งงาน — ใช้วัสดุจากการฟาร์ม/เหมือง/สกิลชีวิต · แสดงคุณสมบัติครบของไอเทมที่คราฟได้ · กด ⚖️ ที่รายการเพื่อเปรียบเทียบกับดาบบอส/ดาบดรอปตัวอื่น</p>` +
+      list.map((c) => `<div class="card setc"><h3>${esc(c.n)}</h3><table class="src"><tr><th>ไอเทม</th><th>เกรด</th><th>เหรียญ</th><th>วัสดุ</th><th>ATK</th><th>ธาตุ</th><th>คุณสมบัติ</th></tr>
+        ${c.list.map((x) => { const w = D.weapons.find((z) => z.id === x.id); return `<tr><td><b>${esc(x.n)}</b>${w && w.wsk ? wskLine(w) : ''}</td><td>${x.g ? GRADE_TH[x.g - 1] : '–'}</td><td>${x.coins.toLocaleString()}</td><td>${x.mats.map((m) => esc(m.n) + '×' + m.q).join(' + ')}</td><td>${w ? w.atk : '–'}</td><td>${w ? elTag(w.el) : '–'}</td><td>${w && w.ab ? esc(w.ab) : '–'} ${w ? cmpBtn(w) : ''}</td></tr>`; }).join('')}</table></div>`).join('') || '<p class="hint">ไม่พบสูตร</p>';
   }
 }
 
