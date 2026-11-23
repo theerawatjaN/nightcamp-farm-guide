@@ -76,7 +76,7 @@ function openJob(id) {
   cur.job = j; cur.path = pathOf(j); cur.wts = wtsOf(j);
   cur.skillIds = new Set(cur.path.flatMap((x) => x.sk.map((s) => s.id)));
   gWt.value = ''; gEl.value = ''; $('#gOnlyWsk').checked = false;
-  drawJobHead(); drawLines(); drawWeapons(); drawMaps(); drawSets(); drawSimSelectors(); drawSim();
+  drawJobHead(); drawLines(); drawBuilds(); drawWeapons(); drawMaps(); drawSets(); drawSimSelectors(); drawSim();
 }
 
 function drawJobHead() {
@@ -93,6 +93,67 @@ function drawJobHead() {
       <div class="stats"><span>HP โต/เลเวล <b>${j.hp}</b></span><span>SP โต/เลเวล <b>${j.sp}</b></span><span>สกิล <b>${j.sk.length}</b></span><span>เลเวลอาชีพสูงสุด <b>${j.maxJob}</b></span></div>
     </div></div>`;
 }
+
+/* --- ไกด์แนะนำสาย: ฟาร์ม · PvP · ล่าบอส (จัดอันดับจากข้อความสกิลจริง) --- */
+function rateLines(j) {
+  const AOE = /รัศมี|เป็นวง|วงกว้าง|รอบตัว|ทั้งแนว|ฝูง|กระจาย|พัด|ฝน|ศัตรูในวง|ทุก (ตัว|ศัตรู)|ลูกเล็ก|ตัวข้าง ๆ|เป้าเอง|แตกเป็น|หลาย (ตัว|เล่ม|ดอก)/;
+  const CTRL = /ผลัก|มึน|แช่แข็ง|ตรึง|ช้าลง|ดึง|กับดัก|เงียบ|ตาบอด|หลับ|เย็นเฉียบ|ช็อต|ติดเผา|ติดพิษ|เลือดออก|เผาศัตรู|สะสม|รุม/;
+  const MOB = /ก้าว|พุ่ง|กระโดด|เดินเร็ว|หลบ|เงาที่ฟัน|ดาช/;
+  const SELF = /ATK \+\d+%|MATK \+\d+%|คริติคอล \+|ความเร็วโจมตี \+|ทุกสเตตัส/;
+  const HEALSHIELD = /ฟื้น HP|ฮีล|โล่|ดูดซับ|รับดาเมจลดลง/;
+  const out = {};
+  for (const l of (j.lines || [])) {
+    const sks = j.sk.filter((s) => s.line === l.id);
+    let farm = 0, boss = 0, pvp = 0, maxPct = 0;
+    for (const s of sks) {
+      if (AOE.test(s.d)) farm += s.active ? 2 : 1;
+      if (CTRL.test(s.d)) pvp += s.active ? 2 : 1;
+      if (MOB.test(s.d)) { farm += 0.5; pvp += 0.5; }
+      if (SELF.test(s.d)) { boss += 1; pvp += 0.5; }
+      if (HEALSHIELD.test(s.d)) farm += 0.3;
+      const m = [...s.d.matchAll(/([\d,]+)% ของ (ATK|MATK)/g)].map((x) => +x[1].replace(/,/g, ''));
+      if (m.length) {
+        const mx = Math.max(...m);
+        maxPct = Math.max(maxPct, mx);
+        if (AOE.test(s.d)) farm += Math.min(3, mx / 300);
+        else boss += Math.min(3, mx / 300);
+      }
+      if (s.active && s.cd && s.cd <= 3) { farm += 0.3; boss += 0.3; pvp += 0.3; }
+    }
+    out[l.id] = { id: l.id, n: l.n, el: l.el, farm, boss, pvp, maxPct, skills: sks };
+  }
+  return Object.values(out);
+}
+function topLines(rated, key) { return [...rated].sort((a, b) => b[key] - a[key]); }
+function lineWeaponPick(lineSkillIds) {
+  const ws = D.weapons.filter((w) => w.wsk && w.wsk.some((b) => b[1] === cur.job.id && lineSkillIds.has(b[0])));
+  return ws.sort((a, b) => b.lv - a.lv)[0] || null;
+}
+function drawBuilds() {
+  const j = cur.job;
+  const rated = rateLines(j);
+  const box = $('#gBuildsBox');
+  if (!rated.length) { box.innerHTML = '<div class="card hint">อาชีพนี้ยังไม่มีสายสกิลแยก — เลือกอาชีพลูกเพื่อดูไกด์สาย</div>'; return; }
+  const mk = (cat, icon, title) => {
+    const rank = topLines(rated, cat);
+    const best = rank[0], alt = rank[1];
+    const w = lineWeaponPick(new Set(best.skills.map((s) => s.id)));
+    const tips = {
+      farm: `วนร่าย <b>${esc(best.n)}</b> รื้อฝูง — จับคู่ธาตุอาวุธให้ตรงมอนในแมพ (ดูแมพแนะนำด้านล่าง) และใช้<a href="#plan">แผนฟาร์ม Lv1–99</a> วางเส้นทางทั้งตี้ บัพฮีลจากบิชอปช่วยลดเวลาพัก`,
+      boss: `โฟกัสสกิลดาเมจสูงสุด (สูงสุดในสาย ~<b>${Math.round(best.maxPct)}% ATK/MATK</b>) ก่อนใช้ตัวรอง · บอสดรอปอาวุธเด่นของตัวเอง — ดูรายชื่อบอสในคลังไอเทม แท็บมอน (กรอง ☑ บอส) · บัพทะลุเกราะ (พรทะลวงเกราะ) ช่วยได้มาก`,
+      pvp: `ใช้สกิลควบคุม (${best.skills.filter((s) => CTRL_DOC.test(s.d)).slice(0, 2).map((s) => s.n).join(' / ') || 'ควบคุมเป้า'}) ปิดทางก่อนระเบิดดาเมจ · ในซีซัน 2 ดวลกันดาเมจถูกลดและไม่สึกอุปกรณ์ การ์ด/เกราะ/ฮีลทำงานปกติ — ตี้ที่มีฮีลได้เปรียบ`,
+    };
+    return `<div class="card"><h3>${icon} ${title}</h3>
+      <div class="line-name">⭐ แนะนำ: ${ELICON[best.el] || ''} ${esc(best.n)}</div>
+      ${alt ? `<div class="hint">สายรอง: ${esc(alt.n)}${w && lineWeaponPick(new Set(alt.skills.map((s) => s.id))) ? '' : ''}</div>` : ''}
+      <div class="skl"><b>อาวุธที่ควรใช้:</b> ${w ? `${WTICON[w.wt]} ${esc(w.n)} (Lv ${w.lv} · ATK ${w.atk} · ${ELICON[w.el]}${EL.th(w.el)})` : 'อาวุธอาชีพประจำ'}</div>
+      <div class="skl"><b>สกิลหลักของสาย:</b> ${best.skills.filter((s) => s.active || /ATK \+|คริ|ความเร็ว/.test(s.d)).slice(0, 4).map((s) => esc(s.n)).join(' · ')}</div>
+      <div class="bonus">${tips[cat]}</div></div>`;
+  };
+  box.innerHTML = mk('farm', '🌿', 'สายฟาร์ม (เก็บเลเวล/ไอเทม)') + mk('boss', '👑', 'สายล่าบอส') + mk('pvp', '⚔️', 'สาย PvP / ดวล') +
+    `<p class="note" style="grid-column:1/-1">การจัดอันดับใช้ข้อความสกิลจริงจากวิกิ (Aoe/ควบคุม/ดาเมจสูงสุด/บัฟตัวเอง) เป็นแนวทาง — ควรปรับตามไอเทมและสไตล์ที่ชอบ</p>`;
+}
+const CTRL_DOC = /ผลัก|มึน|แช่แข็ง|ตรึง|ช้าลง|ดึง|กับดัก|เงียบ|ตาบอด|หลับ|เย็นเฉียบ|ช็อต/;
 
 /* --- skill lines + weapons per line --- */
 function lineWeapons(lineSkillIds) {
@@ -111,10 +172,18 @@ function wepCard(w, wskBonus) {
 function drawLines() {
   const j = cur.job;
   const lines = j.lines || [];
+  const rated = rateLines(j);
+  const rankOf = (key) => topLines(rated, key);
+  const bestFarm = rankOf('farm')[0]?.id, bestBoss = rankOf('boss')[0]?.id, bestPvp = rankOf('pvp')[0]?.id;
+  const badge = (id) => [
+    id === bestFarm ? '<span class="tag r-legend">⭐ ฟาร์มเก่ง</span>' : '',
+    id === bestBoss ? '<span class="tag r-legend">👑 ล่าบอส</span>' : '',
+    id === bestPvp ? '<span class="tag r-legend">⚔️ PvP</span>' : '',
+  ].join(' ');
   $('#gLinesBox').innerHTML = lines.length ? lines.map((l) => {
     const skIds = new Set(j.sk.filter((s) => s.line === l.id).map((s) => s.id));
     const ws = lineWeapons(skIds);
-    return `<div class="card"><div class="line-name">${ELICON[l.el] || ''} ${esc(l.n)} ${elTag(l.el)}</div>
+    return `<div class="card"><div class="line-name">${ELICON[l.el] || ''} ${esc(l.n)}</div><div style="margin-bottom:4px">${badge(l.id)}</div>
       ${j.sk.filter((s) => s.line === l.id).map((s) => `<div class="skl"><b>${esc(s.n)}</b> <span class="pill">${s.active ? 'ใช้งาน' : 'พาสซีฟ'} · Lv${s.max}${s.cd ? ' · CD ' + s.cd + 's' : ''}</span><small>${esc(s.d)}</small></div>`).join('')}
       <h3 style="margin:10px 0 4px">อาวุธที่เสริมสายนี้</h3>
       ${ws.length ? ws.slice(0, 6).map((w) => wepCard(w, w.wsk.find((b) => b[1] === j.id && skIds.has(b[0])))).join('') : '<span class="hint">ยังไม่มีอาวุธที่เสริมสายนี้ในข้อมูล</span>'}
@@ -482,7 +551,7 @@ function renderForge() {
   } else if (forgeTab === 'taint') {
     forgeFilters.innerHTML = '';
     const list = D.traits.filter((t2) => matches(q, t2.n, t2.up, t2.dn));
-    forgeBox.innerHTML = `<p class="card hint" style="margin-bottom:12px">ไอเทมที่ดรอปมีโอกาส <b>1 ใน 50</b> เป็น<b>ของแปดเปื้อน</b>: มีคุณสมบัติเด่น (ข้อดีแรง) พร้อมข้อเสียจริง แสดงบนชิ้นสีม่วงพร้อมเครื่องหมาย ☾ — แปดเปื้อนติดไปกับชิ้นนั้นตลอด (ในกระเป๋าและร้านค้า)</p>
+    forgeBox.innerHTML = `<p class="card hint" style="margin-bottom:12px">ไอเทมที่ดรอปมีโอกาส <b>2% (1 ใน 50)</b> เป็น<b>ของแปดเปื้อน</b>: มีคุณสมบัติเด่น (ข้อดีแรง) พร้อมข้อเสียจริง แสดงบนชิ้นสีม่วงพร้อมเครื่องหมาย ☾ — แปดเปื้อนติดไปกับชิ้นนั้นตลอด (ในกระเป๋าและร้านค้า)<br><span style="color:var(--acc)">โอกาสรวม 2% ต่อชิ้นที่ดรอป · วิกิไม่ได้เปิดเผย % รายชนิดของคุณสมบัติ — ตารางด้านล่างจึงไม่มี % ต่อคุณสมบัติ</span></p>
       <table class="src"><tr><th>คุณสมบัติ</th><th>ข้อดี</th><th>ข้อเสีย</th></tr>
       ${list.map((t2) => `<tr><td><b>☾ ${esc(t2.n)}</b></td><td>${esc(t2.up)}</td><td style="color:var(--red)">${esc(t2.dn)}</td></tr>`).join('')}</table>`;
   } else if (forgeTab === 'craft') {
