@@ -45,6 +45,9 @@ main{max-width:1180px;margin:auto;padding:18px 16px 60px}
 .chip{display:flex;align-items:center;gap:6px;background:var(--card2);border:1px solid var(--line);border-radius:20px;padding:6px 12px;font-size:.85rem;cursor:pointer}
 .chip input{accent-color:var(--acc2)}
 .chip.on{border-color:var(--acc2);color:var(--acc2)}
+.buffgrp{display:flex;gap:6px;flex-wrap:wrap;align-items:center;width:100%;margin:4px 0}
+.buffgrp > b{color:var(--acc);font-size:.85rem;background:var(--card2);border:1px solid var(--line);border-radius:8px;padding:4px 10px}
+.chip small{color:inherit;opacity:.75}
 .grid4{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
 .btn{background:var(--acc);color:#1a1206;border:0;border-radius:10px;padding:10px 22px;font:inherit;font-weight:700;cursor:pointer;margin-top:10px}
 .btn:hover{filter:brightness(1.1)}

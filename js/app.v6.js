@@ -33,7 +33,7 @@ function pathOf(j) { const p = []; for (let x = j; x; x = JOB[x.from]) p.unshift
 function wtsOf(j) { for (let x = j; x; x = JOB[x.from]) if (x.wt && x.wt.length) return x.wt; return []; }
 const jobLine = { hv: ['knight', 'paladin', 'dragonknight', 'dawnwarden', 'dragonbound', 'swordmaster', 'starblade', 'berserker', 'bloodmoon'], mg: ['mage', 'archmage', 'warlock', 'firemage', 'icemage', 'astral', 'starcore', 'winterlord', 'hexlord', 'priest', 'bishop', 'starsaint', 'lightkeeper', 'beacon'], lt: ['rogue', 'assassin', 'shinobi', 'reaper', 'puppeteer', 'eclipse', 'shadowlord', 'harvester', 'showmaster', 'monk', 'meteorfist', 'wisp', 'starshepherd'], rg: ['archer', 'ranger', 'wolfhunter', 'bard', 'gunslinger', 'moonsniper', 'packalpha', 'maestro', 'outlaw'] };
 function setLineOf(jobId) { for (const [l, ids] of Object.entries(jobLine)) if (ids.includes(jobId)) return l; return ''; }
-const LINE_TH = { hv: 'เกราะหนัก', lt: 'เกราะแสง (หนัง)', mg: 'เกราะผ้า (เวท)', rg: 'เรนเจอร์' };
+const LINE_TH = { hv: 'เกราะหนัก', lt: 'เกราะหนัง (แสง)', mg: 'เกราะผ้า (เวท)', rg: 'เรนเจอร์' };
 
 /* drop source text for an item src {kind,mon,chance} */
 function srcHtml(src) {
@@ -435,16 +435,50 @@ function openModal(id) {
 const pJob = $('#pJob'), pLv = $('#pLv'), pLvN = $('#pLvN'), pSize = $('#pSize'), pGoal = $('#pGoal'), pMembers = $('#pMembers'), pBuffs = $('#pBuffs'), pOut = $('#pOut');
 pJob.innerHTML = D.jobs.map((j) => `<option value="${j.id}" ${j.id === 'firemage' ? 'selected' : ''}>${esc(j.n)}</option>`).join('');
 
-/* buff catalog (สมมติฐาน — เกมยังไม่เปิดตัวเลขจริง) */
-const BUFFS = [
-  { id: 'bishop_bless', n: 'พรบิชอป: ATK/MATK +20%', from: ['bishop', 'starsaint'], dmg: 0.2, exp: 0, speed: 0 },
-  { id: 'bishop_exp', n: 'บทสวดแห่งแคมป์: EXP +10%', from: ['bishop', 'starsaint'], dmg: 0, exp: 0.1, speed: 0 },
-  { id: 'priest_heal', n: 'ฮีลต่อเนื่อง: ลดเวลาพักฟื้น', from: ['priest'], dmg: 0, exp: 0, speed: 0.12 },
-  { id: 'monk_shout', n: 'คำรามพลัง: ATK +15%', from: ['monk', 'meteorfist'], dmg: 0.15, exp: 0, speed: 0 },
-  { id: 'bard_song', n: 'บทเพลงกำลังใจ: EXP +20%', from: ['bard', 'maestro'], dmg: 0, exp: 0.2, speed: 0 },
-  { id: 'wisp_light', n: 'แสงวิญญาณ: MATK +15%', from: ['wisp', 'starshepherd'], dmg: 0.15, exp: 0, speed: 0 },
-  { id: 'beacon_aura', n: 'ออร่าเตาสัญญาณ: ATK +10%', from: ['beacon'], dmg: 0.1, exp: 0, speed: 0 },
-];
+/* buff skills — ดึงจากสกิลจริงของอาชีพซัพพอร์ตในปาร์ตี้ (ผลลัพธ์เป็นการประมาณการ)
+   dmg = ดาเมจทั้งตี้ · heal = ลดเวลาพักฟื้น (ฮีล/ลดดาเมจที่ได้รับ/ฟื้น SP) · speed = ยูทิลิตี้อื่น (ร่ายเร็ว, เดินเร็ว)
+   el = เปลี่ยนธาตุอาวุธทั้งตี้ */
+const SUPPORT_JOBS = new Set(['priest', 'bishop', 'bard', 'lightkeeper', 'wisp', 'beacon', 'starsaint', 'maestro', 'starshepherd']);
+const BUFF_SKILLS = {
+  /* นักบวช */
+  pr_heal:        { dmg: 0, heal: 0.12, speed: 0, tag: 'ฮีลทีม 20% HP' },
+  pr_resurrect:   { dmg: 0, heal: 0.03, speed: 0, tag: 'ชุบชีวิตเพื่อน' },
+  blessing:       { dmg: 0.15, heal: 0, speed: 0.02, tag: 'STR/INT/DEX +10 ทั้งตี้' },
+  pr_agi:         { dmg: 0, heal: 0, speed: 0.15, tag: 'AGI +10 · โจมตีเร็วขึ้น' },
+  pr_angelus:     { dmg: 0.02, heal: 0.06, speed: 0, tag: 'VIT/DEF · รับดาเมจลดลง' },
+  pr_gloria:      { dmg: 0.06, heal: 0, speed: 0.04, tag: 'LUK +25 · คริแรงขึ้น' },
+  pr_suffragium:  { dmg: 0, heal: 0, speed: 0.10, tag: 'ร่ายเร็วขึ้น 30%' },
+  pr_aspersio:    { dmg: 0.05, heal: 0, speed: 0, el: 'holy', tag: 'อาวุธทั้งตี้เป็นธาตุแสง — ฟาร์มธาตุมืด/อมตะได้เปรียบ' },
+  /* บิชอป */
+  bi_heal:        { dmg: 0.02, heal: 0.14, speed: 0, tag: 'ฮีลวงกว้าง 10% HP + แสงเผาศัตรู' },
+  bi_sanctuary:   { dmg: 0.06, heal: 0.25, speed: 0, tag: 'เขตศักดิ์สิทธิ์ ฟื้น 6% ทุกครึ่งวิ' },
+  bi_miracle:     { dmg: 0.08, heal: 0.10, speed: 0, tag: 'ฟื้น HP ทุกคน 60% + ชุบเพื่อน + อวยพร ATK/MATK' },
+  bi_clementia:   { dmg: 0.22, heal: 0, speed: 0.02, tag: 'STR/INT/DEX +10 + ต่อ Job Lv' },
+  bi_canto:       { dmg: 0, heal: 0, speed: 0.18, tag: 'AGI +10 · เดินเร็ว 15%' },
+  bi_sacrament:   { dmg: 0, heal: 0, speed: 0.14, tag: 'ร่ายลด 40% · CD ลด 20%' },
+  bi_expiatio:    { dmg: 0.18, heal: 0, speed: 0, tag: 'ทะลุ DEF/MDEF 25%' },
+  bi_barrier:     { dmg: 0.02, heal: 0.08, speed: 0, tag: 'บาเรียทอง · รับดาเมจ −15%' },
+  bi_assumptio:   { dmg: 0.02, heal: 0.08, speed: 0, tag: 'ปีกแสง · รับดาเมจ −15%' },
+  bi_magnificat:  { dmg: 0, heal: 0.08, speed: 0, tag: 'ฟื้น SP เร็ว 2 เท่า — ลดเวลาพัก SP' },
+  bi_impositio:   { dmg: 0.08, heal: 0, speed: 0, tag: 'ATK +25' },
+  bi_battlehymn:  { dmg: 0.12, heal: 0.06, speed: 0.20, el: 'holy', tag: 'อาวุธทั้งตี้เป็นธาตุแสง + ATK +10% + โจมตีเร็ว 30% — ฟาร์มธาตุมืด/อมตะได้เปรียบ' },
+  /* นักกวี */
+  bd_tempo:       { dmg: 0.12, heal: 0, speed: 0.06, tag: 'เพื่อนตีแรงขึ้นตามท่อนเพลง' },
+  bd_warm:        { dmg: 0, heal: 0.09, speed: 0, tag: 'ทั้งทีมฟื้น HP 6% ทุก 5 วิ' },
+  bd_stars:       { dmg: 0, heal: 0, speed: 0.08, tag: 'ร่ายลด 20% · CD ลด 10%' },
+  bd_festival:    { dmg: 0.25, heal: 0.04, speed: 0.05, tag: 'เพื่อนใกล้กองไฟตีแรงขึ้น 25%' },
+  /* ผู้จุดตะเกียง */
+  lk_faith:       { dmg: 0.12, heal: 0, speed: 0, el: 'holy', tag: 'อาวุธทั้งตี้เป็นธาตุแสง + ตีอมตะ/ธาตุมืดแรงขึ้นอีก 20%' },
+  lk_lamp:        { dmg: 0, heal: 0.15, speed: 0, tag: 'โคมแก้ว 4 ดวง ฮีลในแสงตลอดเวลา' },
+  lk_flare:       { dmg: 0, heal: 0.08, speed: 0, tag: 'ฮีลใหญ่ 350% MATK จากโคม' },
+  /* ผู้เลี้ยงดวงไฟ */
+  ws_latch:       { dmg: 0, heal: 0.10, speed: 0, tag: 'ดวงไฟเกาะฮีลเพื่อนที่เลือดน้อยสุด' },
+  ws_burst:       { dmg: 0, heal: 0.10, speed: 0, tag: 'ดวงไฟทุกดวงแตกฮีลทันที' },
+};
+function buffsOfJob(jobId) {
+  const j = JOB[jobId]; if (!j) return [];
+  return j.sk.filter((s) => BUFF_SKILLS[s.id]).map((s) => ({ id: s.id, n: s.n, d: s.d, ...BUFF_SKILLS[s.id] }));
+}
 const party = { members: ['traveler', 'traveler', 'traveler', 'traveler'], buffs: new Set() };
 function refreshMembers() {
   const n = +pSize.value - 1;
@@ -452,12 +486,55 @@ function refreshMembers() {
   $$('[data-mem]', pMembers).forEach((sel) => sel.onchange = () => { party.members[+sel.dataset.mem] = sel.value; refreshBuffs(); });
   refreshBuffs();
 }
+function partyJobIds() {
+  const ids = [pJob.value];
+  for (let i = 0; i < +pSize.value - 1; i++) ids.push(party.members[i]);
+  return ids;
+}
 function refreshBuffs() {
-  const ids = new Set([pJob.value, ...party.members.slice(0, +pSize.value - 1)]);
-  const avail = BUFFS.filter((b) => b.from.some((f) => ids.has(f)));
+  const ids = partyJobIds();
+  const groups = ids.filter((x) => SUPPORT_JOBS.has(x)).map((x) => ({ job: JOB[x], buffs: buffsOfJob(x) })).filter((g) => g.buffs.length);
+  const avail = groups.flatMap((g) => g.buffs);
   party.buffs = new Set([...party.buffs].filter((b) => avail.some((x) => x.id === b)));
-  pBuffs.innerHTML = avail.length ? `<div style="width:100%;color:var(--tx2);font-size:.8rem">บัพที่เลือกได้จากอาชีพซัพพอร์ตในปาตี้ (เลือกว่าอัพมาแล้ว):</div>` + avail.map((b) => `<label class="chip ${party.buffs.has(b.id) ? 'on' : ''}"><input type="checkbox" data-buff="${b.id}" ${party.buffs.has(b.id) ? 'checked' : ''}>${b.n}</label>`).join('') : '<div class="hint" style="width:100%">ไม่มีอาชีพซัพพอร์ตในปาตี้ — ไม่มีบัพให้เลือก (เพิ่มบิชอป/พรีสต์/บาร์ด เป็นต้น เพื่อปลดล็อก)</div>';
-  $$('[data-buff]', pBuffs).forEach((c) => c.onchange = () => { c.checked ? party.buffs.add(c.dataset.buff) : party.buffs.delete(c.dataset.buff); c.closest('.chip').classList.toggle('on', c.checked); });
+  pBuffs.innerHTML = groups.length
+    ? `<div style="width:100%;color:var(--tx2);font-size:.8rem">สกิลบัพจริงของอาชีพซัพพอร์ตในปาร์ตี้ — ติ๊กสกิลที่อัพมาแล้ว (ผลลัพธ์ประมาณการ):</div>` +
+      groups.map((g) => `<div class="buffgrp"><b>${esc(g.job.n)}</b>` + g.buffs.map((b) =>
+        `<label class="chip ${party.buffs.has(b.id) ? 'on' : ''}" title="${esc(b.d)}"><input type="checkbox" data-buff="${b.id}" ${party.buffs.has(b.id) ? 'checked' : ''}>${esc(b.n)} <small>${esc(b.tag)}</small></label>`).join('') + `</div>`).join('') +
+      `<div id="buffSum" style="width:100%;color:var(--acc2);font-size:.8rem"></div>`
+    : '<div class="hint" style="width:100%">ไม่มีอาชีพซัพพอร์ตในปาร์ตี้ — ไม่มีสกิลบัพให้เลือก (เพิ่มนักบวช/บิชอป/นักกวี/ผู้จุดตะเกียง เป็นต้น เพื่อปลดล็อก)</div>';
+  $$('[data-buff]', pBuffs).forEach((c) => c.onchange = () => { c.checked ? party.buffs.add(c.dataset.buff) : party.buffs.delete(c.dataset.buff); c.closest('.chip').classList.toggle('on', c.checked); updateBuffSum(); });
+}
+function updateBuffSum() {
+  const el = $('#buffSum'); if (!el) return;
+  const be = buffEffects();
+  const parts = [];
+  if (be.dmg) parts.push('ดาเมจ +' + Math.round(be.dmg * 100) + '%');
+  if (be.heal) parts.push('ฮีล/ลดพักฟื้น +' + Math.round(be.heal * 100) + '%');
+  if (be.speed) parts.push('ยูทิลิตี้ +' + Math.round(be.speed * 100) + '%');
+  if (be.el) parts.push('อาวุธธาตุ' + EL.th(be.el));
+  el.textContent = parts.length ? 'รวมบัพที่ติ๊ก: ' + parts.join(' · ') : '';
+}
+/* รวมผลบัฟที่ติ๊กไว้ */
+function buffEffects() {
+  const out = { dmg: 0, heal: 0, speed: 0, el: null, list: [] };
+  for (const id of party.buffs) {
+    const b = BUFF_SKILLS[id]; if (!b) continue;
+    out.dmg += b.dmg; out.heal += b.heal; out.speed += b.speed;
+    if (b.el) out.el = b.el;
+    out.list.push({ id, n: (D.skillNames[id] || {}).n || id, ...b });
+  }
+  out.dmg = Math.min(0.6, out.dmg); out.heal = Math.min(0.5, out.heal); out.speed = Math.min(0.6, out.speed);
+  return out;
+}
+/* อัตราฆ่าต่อนาทีพร้อมตารางแยกปัจจัย */
+function killRateFactors(size, be) {
+  const base = 7;
+  const partyMul = 1 + 0.15 * (size - 1);
+  const dmgMul = 1 + be.dmg * 0.5;          // ดาเมจบัฟ → ฆ่าเร็วขึ้น
+  const healMul = 1 + be.heal * 0.6;        // ฮีล/ลดดาเมจที่ได้รับ/ฟื้น SP → ลดเวลาพักฟื้น
+  const utilMul = 1 + be.speed * 0.6;       // ร่ายเร็ว/CD ลด/เดินเร็ว
+  const rate = base * partyMul * dmgMul * healMul * utilMul;
+  return { base, partyMul, dmgMul, healMul, utilMul, rate };
 }
 pLv.addEventListener('input', () => pLvN.textContent = pLv.value);
 pSize.addEventListener('change', refreshMembers);
@@ -471,11 +548,13 @@ $('#pGo').addEventListener('click', buildPlan);
 function buildPlan() {
   const jobId = pJob.value, charLv = +pLv.value, size = +pSize.value, goal = pGoal.value;
   const j = JOB[jobId], wts = wtsOf(j), line = setLineOf(jobId);
-  const buffs = BUFFS.filter((b) => party.buffs.has(b.id));
-  const dmgB = Math.min(0.6, buffs.reduce((s, b) => s + b.dmg, 0));
-  const expB = Math.min(0.6, buffs.reduce((s, b) => s + b.exp, 0));
-  const spd = buffs.reduce((s, b) => s + b.speed, 0);
-  const killRate = 7 * (1 + 0.15 * (size - 1)) * (1 + spd) * (1 + dmgB * 0.5); // ตัว/นาที (ประมาณ)
+  const be = buffEffects();
+  const dmgB = be.dmg, spd = be.speed, elBless = be.el;
+  const kr = killRateFactors(size, be);
+  const killRate = kr.rate;
+  const mainEl = (j.sk.find((s) => s.el) || {}).el || 'neutral';
+  const effEl = elBless || mainEl;
+  buildPlan._effEl = effEl;
   const brks = [[1, 10], [11, 20], [21, 30], [31, 40], [41, 50], [51, 60], [61, 70], [71, 80], [81, 90], [91, 99]];
 
   // target items for item mode
@@ -494,11 +573,11 @@ function buildPlan() {
 
   const rows = brks.map(([a, b]) => {
     const mid = (a + b) / 2;
-    const pick = bestMaps(mid, null, 1)[0];
+    const pick = bestMaps(mid, effEl, 1)[0];
     const monsAvgExp = pick.best.reduce((s, mn) => s + ((MON[mn.id] || {}).exp || 0), 0) / Math.max(1, pick.best.length);
     let gapPen = 1;
     if (mid < a || charLv > b) gapPen = charLv > b ? 0.5 : 1;
-    const expPerMin = monsAvgExp * killRate * (1 + expB) * gapPen;
+    const expPerMin = monsAvgExp * killRate * gapPen;
     const expNeed = Array.from({ length: b - a + 1 }, (_, i) => expToNext(a + i)).reduce((x, y) => x + y, 0);
     const hours = expNeed / (expPerMin * 60);
     const done = charLv >= b;
@@ -513,12 +592,23 @@ function buildPlan() {
 
   pOut.innerHTML = `
     <div class="sumgrid">
-      <div class="sum"><b>${esc(j.n)}</b><small>อาชีพหลัก · ปาตี้ ${size} คน</small></div>
+      <div class="sum"><b>${esc(j.n)}</b><small>อาชีพหลัก · ปาร์ตี้ ${size} คน</small></div>
       <div class="sum"><b>${Math.round(totalHours - rows.reduce((s, r) => s + (r.done ? r.hours : 0), 0))}</b><small>ชม. โดยประมาณ เหลือจาก Lv ${charLv} → 99</small></div>
-      <div class="sum"><b>${killRate.toFixed(1)}</b><small>ตัว/นาที (ทั้งปาตี้)</small></div>
-      <div class="sum"><b>${buffs.length ? buffs.map((b) => b.n.split(':')[0]).join(' + ') : 'ไม่มีบัพ'}</b><small>บัพที่เปิดใช้${expB ? ' · EXP +' + Math.round(expB * 100) + '%' : ''}</small></div>
+      <div class="sum"><b>${killRate.toFixed(1)}</b><small>ตัว/นาที (ทั้งปาร์ตี้)</small></div>
+      <div class="sum"><b>${be.list.length ? be.list.map((b) => b.n).join(' + ') : 'ไม่มีบัพ'}</b><small>สกิลบัพที่เปิด${dmgB ? ' · ดาเมจ +' + Math.round(dmgB * 100) + '%' : ''}${be.heal ? ' · ฮีล/พักฟื้น +' + Math.round(be.heal * 100) + '%' : ''}${spd ? ' · ยูทิลิตี้ +' + Math.round(spd * 100) + '%' : ''}</small></div>
     </div>
-    ${drawSimCanvasPlan(j, charLv, rows.find((r) => r.isCur) || rows[0], wts)}
+    ${elBless ? `<div class="card" style="border-color:var(--el-holy);margin-bottom:12px">🪽 <b>อาวุธทั้งตี้เป็นธาตุแสง</b> (จาก ${be.list.filter((b) => b.el).map((b) => b.n).join(' + ')}) — ปาร์ตี้ฟาร์มแมพ/มอน<b>ธาตุมืดและอมตะ</b>ได้เปรียบ (แสง ▲ เงา ×1.25 / อมตะ ×1.5) แผนด้านล่างจัดอันดับแมพใหม่ตามธาตุแสงแล้ว</div>` : ''}
+    <div class="card" style="margin-bottom:12px"><b>🧮 ปัจจัยประสิทธิภาพการฟาร์มของปาร์ตี้</b>
+      <table class="src"><tr><th>ปัจจัย</th><th>ค่า</th><th>ผลต่ออัตราฆ่า</th><th>ที่มา</th></tr>
+        <tr><td>อัตราฆ่าพื้นฐาน (1 คน)</td><td>${kr.base} ตัว/นาที</td><td>—</td><td>สมมติฐานของเครื่องมือ</td></tr>
+        <tr><td>จำนวนสมาชิก ${size} คน</td><td>×${kr.partyMul.toFixed(2)}</td><td>+${Math.round((kr.partyMul - 1) * 100)}%</td><td>แชร์เป้า ล่าพร้อมกัน</td></tr>
+        ${be.dmg ? `<tr><td>สกิลบัพเดเมจ</td><td>ดาเมจ +${Math.round(be.dmg * 100)}%</td><td>×${kr.dmgMul.toFixed(2)}</td><td>${be.list.filter((b) => b.dmg).map((b) => b.n).join(' + ')}</td></tr>` : ''}
+        ${be.heal ? `<tr><td>สกิลฮีล / ลดดาเมจที่ได้รับ / ฟื้น SP</td><td>พักฟื้นลดลง +${Math.round(be.heal * 100)}%</td><td>×${kr.healMul.toFixed(2)}</td><td>${be.list.filter((b) => b.heal).map((b) => b.n).join(' + ')}</td></tr>` : ''}
+        ${be.speed ? `<tr><td>ยูทิลิตี้ (ร่ายเร็ว / CD ลด / เดินเร็ว)</td><td>×${be.speed.toFixed(2)}</td><td>×${kr.utilMul.toFixed(2)}</td><td>${be.list.filter((b) => b.speed).map((b) => b.n).join(' + ')}</td></tr>` : ''}
+        <tr><td><b>รวมอัตราฆ่าปาร์ตี้</b></td><td colspan="3"><b>${killRate.toFixed(1)} ตัว/นาที</b></td></tr>
+      </table>
+    </div>
+    ${drawSimCanvasPlan(j, charLv, rows.find((r) => r.isCur) || rows[0], wts, effEl)}
     <table class="brktbl"><tr><th>เลเวล</th><th>แมพที่แนะนำ</th><th>เป้ามอนหลัก</th><th>EXP/นาที ประมาณ</th><th>เวลา ประมาณ</th>${goal !== 'lv' ? '<th>ไอเทมที่ควรเก็บช่วงนี้</th>' : ''}</tr>
     ${rows.map((r) => `<tr class="${r.done ? 'done' : ''} ${r.isCur ? 'cur' : ''}">
       <td><b>Lv ${r.a}–${r.b}</b>${r.done ? ' ✓' : ''}${r.isCur ? ' ◀ ตอนนี้' : ''}</td>
@@ -531,26 +621,26 @@ function buildPlan() {
     ${goal !== 'lv' ? `<h2 style="margin-top:20px">รายการไอเทมเป้าหมาย (จากเลเวลตอนนี้)</h2>
       <table class="brktbl"><tr><th>ประเภท</th><th>ไอเทม</th><th>มอนที่ดรอป</th><th>โอกาส</th><th>ฆ่าต้องการ</th><th>เวลา ประมาณ</th></tr>
       ${targets.map((t) => `<tr><td>${esc(t.type)}</td><td>${esc(t.n)}</td><td>${t.mon ? esc(t.mon.n) : '?'}${t.mon?.boss ? ' 👑' : ''}<br><small>📍 ${t.mon ? t.mon.maps.map((mid) => esc(MAP[mid]?.n || mid)).join(' / ') : ''}</small></td><td>${pct(t.chance)}</td><td>${Math.ceil(1 / t.chance).toLocaleString()} ตัว</td><td>${Math.ceil(1 / t.chance / killRate / 60)} ชม.</td></tr>`).join('')}</table>` : ''}
-    <p class="note" style="margin-top:14px">สมมติฐาน: อัตราฆ่าพื้นฐาน 7 ตัว/นาที/ปาตี้, สมาชิกเพิ่ม 1 คน +15% อัตราฆ่า, บัฟเดเมจเพิ่มความเร็วครึ่งหนึ่งของค่าเดเมจ, EXP ต่อเลเวลเป็นเส้นโค้งประมาณการ (เกมยังไม่เปิดเผยตารางจริง), EXP มอนจากวิกิ ค่าจริงขึ้นกับการเล่นจริง</p>`;
+    <p class="note" style="margin-top:14px">สมมติฐาน: อัตราฆ่าพื้นฐาน 7 ตัว/นาที/ปาร์ตี้, สมาชิกเพิ่ม 1 คน +15% อัตราฆ่า, สกิลบัพดาเมจ/ฮีล/ยูทิลิตี้คิดเป็นปัจจัยคูณตามตารางด้านบน (ประมาณการจากผลสกิลจริงในวิกิ), EXP ต่อเลเวลเป็นเส้นโค้งประมาณการ (เกมยังไม่เปิดเผยตารางจริง), EXP มอนจากวิกิ ค่าจริงขึ้นกับการเล่นจริง</p>`;
 
   // wire the plan canvas reveal
 }
 /* plan mini sim canvas */
-function drawSimCanvasPlan(j, lv, row, wts) {
-  const wEl = (j.sk.find((s) => s.el) || {}).el || 'neutral';
+function drawSimCanvasPlan(j, lv, row, wts, effEl) {
   const pick = row.pick;
   return `<div class="simwrap" style="margin:12px 0"><canvas id="planCanvas" width="900" height="300"></canvas>
     <div class="siminfo"><h3>ตอนนี้ (Lv ${lv}) → ฟาร์มที่ 📍 ${esc(pick.m.n)}</h3>
     <div>เขต <b>${esc(pick.m.regionN)}</b> · ${esc(pick.m.lvText)}</div>
-    ${pick.best.slice(0, 5).map((mn) => { const [cls, txt] = effBadge(wEl, mn.el); return `<div class="eff"><span class="${cls}">${cls === 'ok' ? '▲' : cls === 'bad' ? '▼' : '•'} ${esc(mn.n)}</span> — ${txt}</div>`; }).join('')}
-    <div class="note">ภาพจำลองจากธาตุสกิลหลักของ ${esc(j.n)} (${EL.th(wEl)}) และมอนในแมพที่แนะนำ</div></div></div>`;
+    ${pick.best.slice(0, 5).map((mn) => { const [cls, txt] = effBadge(effEl, mn.el); return `<div class="eff"><span class="${cls}">${cls === 'ok' ? '▲' : cls === 'bad' ? '▼' : '•'} ${esc(mn.n)}</span> — ${txt}</div>`; }).join('')}
+    <div class="note">ภาพจำลองจากธาตุที่ปาร์ตี้ตีได้จริง (${EL.th(effEl)}${effEl !== ((j.sk.find((s) => s.el) || {}).el || 'neutral') ? ' — จากสกิลบัพธาตุ' : ' (ธาตุสกิลหลักของ ' + esc(j.n) + ')'}) และมอนในแมพที่แนะนำ</div></div></div>`;
 }
 /* draw plan canvas after inject */
 new MutationObserver(() => { const c = $('#planCanvas'); if (c && !c._done) { c._done = 1; drawPlanScene(c); } }).observe($('#pOut'), { childList: true });
 function drawPlanScene(c) {
   const ctx = c.getContext('2d'); const W = c.width, H = c.height;
   const j = JOB[pJob.value], lv = +pLv.value;
-  const pick = bestMaps(lv, null, 1)[0];
+  const effEl = buildPlan._effEl || (j.sk.find((s) => s.el) || {}).el || 'neutral';
+  const pick = bestMaps(lv, effEl, 1)[0];
   ctx.clearRect(0, 0, W, H);
   const sky = ctx.createLinearGradient(0, 0, 0, H); sky.addColorStop(0, '#1a2340'); sky.addColorStop(1, '#0d1a2b');
   ctx.fillStyle = sky; ctx.fillRect(0, 0, W, H);
@@ -558,11 +648,11 @@ function drawPlanScene(c) {
   ctx.fillStyle = '#16232e'; ctx.beginPath(); ctx.moveTo(0, H * .7); for (let x = 0; x <= W; x += 60) ctx.lineTo(x, H * .7 + Math.sin(x / 90) * 10); ctx.lineTo(W, H); ctx.lineTo(0, H); ctx.fill();
   ctx.fillStyle = '#f5e9c8'; ctx.beginPath(); ctx.arc(W - 90, 60, 22, 0, 7); ctx.fill();
   ctx.fillStyle = '#1a2340'; ctx.beginPath(); ctx.arc(W - 82, 54, 18, 0, 7); ctx.fill();
-  const wEl = (j.sk.find((s) => s.el) || {}).el || 'neutral';
+  const wEl = effEl;
   pick.m.mons.slice(0, 5).forEach((mn, i) => drawMon(ctx, 130 + i * 150, H * .66 + (i % 2 ? 12 : -4), mn, wEl));
   drawHero(ctx, 70, H * .68, j, wEl);
   ctx.font = '600 15px "Noto Sans Thai"'; ctx.fillStyle = '#e8ecf7';
-  ctx.fillText('🏕️ ' + pick.m.n + ' · ' + pick.m.regionN + ' — แผนปาตี้ของคุณ', 16, 26);
+  ctx.fillText('🏕️ ' + pick.m.n + ' · ' + pick.m.regionN + ' — แผนปาร์ตี้ของคุณ', 16, 26);
   const size = +pSize.value;
   for (let i = 1; i < size; i++) drawHero(ctx, 40 + i * 46, H * .74, j, wEl);
 }
