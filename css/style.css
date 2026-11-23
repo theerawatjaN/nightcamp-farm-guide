@@ -139,6 +139,7 @@ table.src th{color:var(--tx2);font-weight:600}
 
 /* modal */
 .modal{position:fixed;inset:0;background:rgba(5,8,14,.75);display:flex;align-items:center;justify-content:center;z-index:100;padding:20px}
+.modal[hidden]{display:none}
 .modal__box{position:relative;background:var(--card);border:1px solid var(--line);border-radius:16px;max-width:860px;width:100%;max-height:86vh;overflow:auto;padding:22px}
 .modal__x{position:absolute;top:10px;right:12px;background:var(--bg2);border:1px solid var(--line);color:var(--tx);border-radius:8px;width:32px;height:32px;cursor:pointer}
 .kv{display:grid;grid-template-columns:130px 1fr;gap:4px 12px;font-size:.88rem}
