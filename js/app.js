@@ -367,10 +367,13 @@ function bindDbFilters() {
 }
 
 /* ---------- item detail modal ---------- */
+function closeModal() { $('#modal').hidden = true; }
+$('#modalX').addEventListener('click', closeModal);
+$('#modal').addEventListener('click', (e) => { if (e.target === $('#modal')) closeModal(); });
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeModal(); });
 document.addEventListener('click', (e) => {
   const c = e.target.closest('[data-item]');
-  if (c) { openModal(c.dataset.item); return; }
-  if (e.target.closest('#modalX') || e.target === $('#modal')) $('#modal').hidden = true;
+  if (c) openModal(c.dataset.item);
 });
 function openModal(id) {
   const B = $('#modalBody');
