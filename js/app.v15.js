@@ -636,12 +636,12 @@ function renderForge() {
 
 /* ════════════════════════ PAGE 3.5 · จำลอง build ตัวละคร ════════════════════════ */
 const B = {
-  job: 'firemage', lv: 50, jlv: 50, spPerLv: 5, gender: 'm',
+  job: 'firemage', lv: 50, jlv: 50, spPerLv: 5, gender: 'm', gradeFilter: '',
   stats: { str: 0, agi: 0, vit: 0, int: 0, dex: 0, luk: 0 },
   skills: {},
-  eq: { weapon: '', top: '', pants: '', hat: '', acc: '' },
-  ref: { weapon: 0, top: 0, pants: 0, hat: 0, acc: 0 },
-  opt: { weapon: [], top: [], pants: [], hat: [], acc: [] },
+  eq: { weapon: '', top: '', pants: '', hat: '', acc: '', robe: '', glasses: '', shield: '' },
+  ref: { weapon: 0, top: 0, pants: 0, hat: 0, acc: 0, robe: 0, glasses: 0, shield: 0 },
+  opt: { weapon: [], top: [], pants: [], hat: [], acc: [], robe: [], glasses: [], shield: [] },
   otier: {},
 };
 const STAT_TH = { str: 'STR พลังโจมตีประชิด', agi: 'AGI ความเร็ว/หลบ', vit: 'VIT พลังชีวิต', int: 'INT พลังเวท', dex: 'DEX ความแม่น/ธนู', luk: 'LUK โชค/คริ' };
@@ -657,26 +657,42 @@ function bTotalSP() {
   path.forEach((x, i) => { sp += (i === path.length - 1 ? Math.min(B.jlv, x.maxJob) : x.maxJob); });
   return sp;
 }
-function bStatPts() { return B.spPerLv * Math.max(0, B.lv - 1); }
+function bStatPts() { return B.jlv; } // แต้มสเตตัส = Job Lv (ตรงตามหน้าจอเกม: JLv23 = ใช้ 22 + คงเหลือ 1)
 function bCap() { return Math.min(80, Math.floor(30 + 0.55 * B.lv)); }
 function bEff(p) { const c = bCap(); return Math.min(p, c) + Math.max(0, p - c) * 0.4; }
 function bHPmul() { const t = D.buildHp || {}; let best = 1; for (const lv of Object.keys(t)) if (B.lv >= +lv) best = t[lv]; return best; }
 function bSkillsList() { return bPathJobs().flatMap((x) => x.sk.map((s) => ({ ...s, fromJob: x }))); }
+function bEqStat(k) {
+  let s = 0;
+  for (const slot of ['top', 'pants', 'hat', 'acc', 'robe', 'glasses', 'shield']) {
+    const it = D.armors.find((a) => a.id === B.eq[slot]);
+    if (it && it.st && it.st[k]) s += it.st[k];
+  }
+  return s;
+}
 function bRenderStats() {
   const box = $('#bStats');
-  const total = bStatPts(), used = Object.values(B.stats).reduce((a, b) => a + b, 0), left = total - used;
+  const total = bStatPts(), spent = Object.values(B.stats).reduce((a, b) => a + b, 0), left = total - spent;
   const cap = bCap();
-  box.innerHTML = `<h3>แต้มสเตตัส</h3><div class="hint">ได้ทั้งหมด <b>${total}</b> แต้ม (${B.spPerLv}/เลเวล × Lv${B.lv}) · คงเหลือ <b style="color:var(--acc)">${left}</b> · ซอฟต์แคปต่อสเตตัส ${cap} (เกินทำงาน 40%)</div>
-    ${Object.keys(STAT_TH).map((k) => `<div class="strow"><span class="stn">${k.toUpperCase()} <small>${esc(STAT_TH[k])}</small></span>
-      <button class="stbtn" data-st="${k}" data-d="-5">−5</button><button class="stbtn" data-st="${k}" data-d="-1">−1</button>
-      <b class="stv ${B.stats[k] > cap ? 'over' : ''}">${B.stats[k]}</b>
-      <button class="stbtn" data-st="${k}" data-d="1">+1</button><button class="stbtn" data-st="${k}" data-d="5">+5</button>
-      <small class="hint">${bEff(B.stats[k]).toFixed(1)} ผลจริง</small></div>`).join('')}`;
+  box.innerHTML = `<h3>สถานะ</h3><div class="hint">แต้มตาม Job Lv: รวม <b>${total}</b> · ใช้ <b>${spent}</b> · คงเหลือ <b style="color:var(--acc)">${left}</b> · เริ่มต้นสเตตัสละ 5 · ซอฟต์แคป ${cap} (เกินทำงาน 40%)</div>
+    ${Object.keys(STAT_TH).map((k) => {
+      const spentK = B.stats[k], eqB = Math.round(bEqStat(k) * 100) / 100;
+      const totalK = 5 + spentK;
+      return `<div class="strow"><span class="stn">${k.toUpperCase()} <small>${esc(STAT_TH[k].split(' ')[0])}</small></span>
+        <button class="stbtn" data-st="${k}" data-d="-5">−5</button><button class="stbtn" data-st="${k}" data-d="-1">−1</button>
+        <b class="stv ${totalK > cap ? 'over' : ''}">${totalK}${eqB ? ' <span style="color:var(--grn)">+' + eqB + '</span>' : ''}</b>
+        <button class="stbtn" data-st="${k}" data-d="1">+1</button><button class="stbtn" data-st="${k}" data-d="5">+5</button>
+        <small class="hint">ใช้ ${spentK}</small></div>`;
+    }).join('')}
+    <button class="btn btn--sm btn--ghost" id="bResetStats" style="margin-top:6px">รีเซ็ตสถานะ</button>`;
   $$('.stbtn', box).forEach((b) => b.onclick = () => {
     const k = b.dataset.st, d = +b.dataset.d;
-    B.stats[k] = Math.max(0, Math.min(99, B.stats[k] + d));
+    const used = Object.values(B.stats).reduce((a, b2) => a + b2, 0);
+    if (d > 0 && used >= bStatPts()) return;
+    B.stats[k] = Math.max(0, B.stats[k] + d);
     bRenderStats(); bCompute();
   });
+  $('#bResetStats').onclick = () => { B.stats = { str: 0, agi: 0, vit: 0, int: 0, dex: 0, luk: 0 }; bRenderStats(); bCompute(); };
 }
 function bRenderSkills() {
   const box = $('#bSkills');
@@ -709,44 +725,97 @@ function bOptOptions(slot) {
   const poolMap = { weapon: 'อาวุธ', top: 'ชุดบน-ล่าง', pants: 'ชุดบน-ล่าง', hat: 'หมวก', acc: 'เครื่องประดับ' };
   return D.opts.filter((o) => o.on.includes(poolMap[slot]) && OPT_EFFECT[o.id]);
 }
+const GEAR_LEFT = ['hat', 'acc', 'pants', 'weapon'];
+const GEAR_RIGHT = ['glasses', 'top', 'robe', 'shield'];
+const GEAR_TH = { hat: 'หมวก', acc: 'ต่างหู/เครื่องประดับ', pants: 'กางเกง+รองเท้า', weapon: 'อาวุธ', glasses: 'แว่น', top: 'ชุดบน', robe: 'เสื้อคลุม', shield: 'โล่' };
+const ST_TH = { def: 'DEF', mdef: 'MDEF', hp: 'HP', sp: 'SP', hpPct: 'HP %', spPct: 'SP %', crit: 'CRIT', atk: 'ATK %', skill: 'SKILL', cdr: 'CD ลด', spd: 'SPD', hit: 'HIT', flee: 'FLEE', aspd: 'ASPD', str: 'STR', agi: 'AGI', vit: 'VIT', int: 'INT', dex: 'DEX', luk: 'LUK' };
+function stLine(k, v) {
+  const th = ST_TH[k] || k.toUpperCase();
+  if (['crit', 'atk', 'skill', 'cdr', 'spd', 'hpPct', 'spPct'].includes(k)) return `${th} +${Math.round(v * 100)}%`;
+  return `${th} +${v}`;
+}
+function gItemOf(slot) {
+  if (slot === 'weapon') return D.weapons.find((w) => w.id === B.eq[slot]) || null;
+  return D.armors.find((a) => a.id === B.eq[slot]) || null;
+}
+function gStatsHtml(slot) {
+  const it = gItemOf(slot);
+  if (!it) return '<div class="gempty">— ว่าง —</div>';
+  const lines = [];
+  for (const [k, v] of Object.entries(it.st || {})) lines.push(stLine(k, v));
+  const refN = B.ref[slot] || 0;
+  if (refN) {
+    if (slot === 'weapon') lines.push(`ตีบวก +${refN}: ATK +${refN * 4}%`);
+    else lines.push(`ตีบวก +${refN}: DEF +${Math.floor(refN / 2)} · HP +${(refN * 0.5).toFixed(1)}%`);
+  }
+  const rows = B.opt[slot] || [];
+  rows.forEach((id, idx) => {
+    const o = D.opts.find((x) => x.id === id); if (!o) return;
+    const tier = (B.otier[slot + '_' + idx]) ?? 2;
+    const [mn, mx] = o.tiers[Math.min(2, tier)];
+    lines.push(`${esc(o.label)} +${mx}${o.unit} <small>(${mn}–${mx}${o.unit})</small>`);
+  });
+  return `<div class="gstats">${lines.map((l) => `<div>${l}</div>`).join('')}</div>`;
+}
+function gFilterItems(slot, items) {
+  let out = items.filter((x) => (x.lv || 0) <= B.lv);                       // เลเวลอุปกรณ์ ≤ เลเวลตัวละคร
+  if (B.gradeFilter) out = out.filter((x) => (x.g ?? 1) === B.gradeFilter); // กรองเกรด (ไม่ระบุเกรด = เกรด 1)
+  const curSel = B.eq[slot];
+  if (curSel && !out.some((x) => x.id === curSel)) {
+    const cur = items.find((x) => x.id === curSel);
+    if (cur) out = out.concat(cur); // คงของที่เลือกไว้แม้ถูกกรองออก
+  }
+  return out;
+}
 function bRenderEquip() {
-  const box = $('#bEquip');
-  const wts = wtsOf(JOB[B.job]); // อิงตามอาชีพที่เลือกเสมอ
-  box.innerHTML = `<h3>อุปกรณ์</h3>` + Object.keys(SLOT_TH).map((slot) => {
+  const wts = wtsOf(JOB[B.job]);
+  const build = (slot) => {
     let items;
     if (slot === 'weapon') items = D.weapons.filter((w) => wts.includes(w.wt));
     else items = D.armors.filter((a) => a.s === slot);
-    items = items.slice().sort((a, b) => a.lv - b.lv);
-    const selId = B.eq[slot];
-    const it = slot === 'weapon' ? D.weapons.find((w) => w.id === selId) : D.armors.find((a) => a.id === selId);
-    const over = it && it.lv > B.lv ? `<small style="color:var(--red)">⚠️ ไอเทม Lv${it.lv} สูงกว่าตัวละคร Lv${B.lv}</small>` : '';
-    const opts = bOptOptions(slot);
+    items = gFilterItems(slot, items.slice().sort((a, b) => a.lv - b.lv));
+    const it = gItemOf(slot);
+    const over = it && it.lv > B.lv ? `<small style="color:var(--red)">⚠ Lv${it.lv} &gt; Lv${B.lv}</small>` : '';
+    const gBadge = it && it.g ? `<span class="pill">เกรด ${it.g}</span>` : '';
     const rows = B.opt[slot] || [];
+    const opts = bOptOptions(slot);
     const optRows = rows.map((id, idx) => {
       const avail = opts.filter((o) => rows.filter((r) => r === o.id).length < 2 || o.id === id);
+      const o = D.opts.find((x) => x.id === id);
       return `<div class="eqoptrow">
-        <label class="sel"><span>แถวออฟ ${idx + 1}</span><select data-optrow="${slot}" data-idx="${idx}"><option value="">— เลือกออฟ —</option>${avail.map((o) => `<option value="${o.id}" ${id === o.id ? 'selected' : ''}>${esc(o.label)}</option>`).join('')}</select></label>
-        ${id ? `<label class="sel"><span>ขั้น</span><select data-otier="${slot}" data-idx="${idx}">${['ธรรมดา', 'ดี', 'เทพ'].map((t2, i2) => `<option value="${i2}" ${(B.otier[slot + '_' + idx]) === i2 ? 'selected' : ''}>${t2}</option>`).join('')}</select></label>` : ''}
-        <button class="stbtn" data-optdel="${slot}" data-idx="${idx}" title="ลบแถวนี้">✕</button>
+        <select data-optrow="${slot}" data-idx="${idx}"><option value="">— เลือกออฟ —</option>${avail.map((o2) => `<option value="${o2.id}" ${id === o2.id ? 'selected' : ''}>${esc(o2.label)}</option>`).join('')}</select>
+        ${id && o ? `<select data-otier="${slot}" data-idx="${idx}">${['ธรรมดา', 'ดี', 'เทพ'].map((t2, i2) => `<option value="${i2}" ${(B.otier[slot + '_' + idx]) === i2 ? 'selected' : ''}>${t2}</option>`).join('')}</select>` : ''}
+        <button class="stbtn" data-optdel="${slot}" data-idx="${idx}">✕</button>
       </div>`;
-    }).join('') + (rows.length < 4 ? `<button class="stbtn optadd" data-optadd="${slot}">+ เพิ่มแถวออฟ (${rows.length}/4)</button>` : '<small class="hint">ครบ 4 แถว (สูงสุด)</small>');
-    return `<div class="eqrow">
-      <div class="eqpic">${it ? (slot === 'hat' ? (aiHat(it.id, 40) || aiHtml('items', it.id, 40)) : aiHtml('items', it.id, 40)) : ''}</div>
-      <div style="flex:1">
-        <label class="sel"><span>${SLOT_TH[slot]}</span><select data-eq="${slot}"><option value="">— ว่าง —</option>${items.map((x) => `<option value="${x.id}" ${selId === x.id ? 'selected' : ''}>${esc(x.n)} (Lv${x.lv}${x.atk ? ', ATK ' + x.atk : ''}${x.st && x.st.def ? ', DEF ' + x.st.def : ''})</option>`).join('')}</select></label>
-        ${over}
-        <div class="eqopts">
-          <label class="sel"><span>ตีบวก</span><select data-ref="${slot}"><option value="" ${!B.ref[slot] ? 'selected' : ''}>+0</option>${[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => `<option value="${n}" ${B.ref[slot] === n ? 'selected' : ''}>+${n}</option>`).join('')}</select></label>
+    }).join('') + (rows.length < 4 ? `<button class="stbtn optadd" data-optadd="${slot}">+ ออฟ (${rows.length}/4)</button>` : '<small class="hint">ครบ 4 แถว</small>');
+    return `<div class="gslot">
+      <div class="gselrow">
+        <span class="gicon">${it ? (slot === 'hat' ? (aiHat(it.id, 30) || aiHtml('items', it.id, 30)) : (aiHtml('items', it.id, 30) || slotIcon(slot === 'weapon' ? 'weapon' : slot))) : '<span class="gemptyic">＋</span>'}</span>
+        <div style="flex:1">
+          <label class="sel"><span>${GEAR_TH[slot]} ${gBadge} ${over}</span><select data-eq="${slot}"><option value="">— ว่าง —</option>${items.map((x) => `<option value="${x.id}" ${(B.eq[slot]) === x.id ? 'selected' : ''}>${esc(x.n)} (Lv${x.lv}${x.g ? ', ก' + x.g : ''})</option>`).join('')}</select></label>
         </div>
-        <div class="eqoptrows">${optRows}</div>
-      </div></div>`;
-  }).join('');
-  $$('[data-eq]', box).forEach((s) => s.onchange = () => { B.eq[s.dataset.eq] = s.value; bRenderEquip(); bCompute(); });
-  $$('[data-ref]', box).forEach((s) => s.onchange = () => { B.ref[s.dataset.ref] = +s.value; bCompute(); });
-  $$('[data-optrow]', box).forEach((s) => s.onchange = () => { B.opt[s.dataset.optrow][+s.dataset.idx] = s.value; bRenderEquip(); bCompute(); });
-  $$('[data-otier]', box).forEach((s) => s.onchange = () => { B.otier[s.dataset.otier + '_' + s.dataset.idx] = +s.value; bCompute(); });
-  $$('[data-optdel]', box).forEach((b) => b.onclick = () => { const slot = b.dataset.optdel; B.opt[slot].splice(+b.dataset.idx, 1); bRenderEquip(); bCompute(); });
-  $$('[data-optadd]', box).forEach((b) => b.onclick = () => { if (B.opt[b.dataset.optadd].length < 4) { B.opt[b.dataset.optadd].push(''); bRenderEquip(); } });
+      </div>
+      ${gStatsHtml(slot)}
+      <div class="eqopts">
+        <label class="sel"><span>ตีบวก</span><select data-ref="${slot}"><option value="" ${!B.ref[slot] ? 'selected' : ''}>+0</option>${[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => `<option value="${n}" ${B.ref[slot] === n ? 'selected' : ''}>+${n}</option>`).join('')}</select></label>
+      </div>
+      <div class="eqoptrows">${optRows}</div>
+    </div>`;
+  };
+  $('#gearLeft').innerHTML = GEAR_LEFT.map(build).join('');
+  $('#gearRight').innerHTML = GEAR_RIGHT.map(build).join('');
+  $$('[data-eq]').forEach((s) => s.onchange = () => { B.eq[s.dataset.eq] = s.value; bRenderEquip(); bCompute(); });
+  $$('[data-ref]').forEach((s) => s.onchange = () => { B.ref[s.dataset.ref] = +s.value; bCompute(); gStatsRefresh(); });
+  $$('[data-optrow]').forEach((s) => s.onchange = () => { B.opt[s.dataset.optrow][+s.dataset.idx] = s.value; bRenderEquip(); bCompute(); });
+  $$('[data-otier]').forEach((s) => s.onchange = () => { B.otier[s.dataset.otier + '_' + s.dataset.idx] = +s.value; bCompute(); gStatsRefresh(); });
+  $$('[data-optdel]').forEach((b) => b.onclick = () => { const slot = b.dataset.optdel; B.opt[slot].splice(+b.dataset.idx, 1); bRenderEquip(); bCompute(); });
+  $$('[data-optadd]').forEach((b) => b.onclick = () => { if (B.opt[b.dataset.optadd].length < 4) { B.opt[b.dataset.optadd].push(''); bRenderEquip(); } });
+}
+function gStatsRefresh() {
+  GEAR_LEFT.concat(GEAR_RIGHT).forEach((slot) => {
+    const card = $$('#gearLeft .gslot, #gearRight .gslot').find((c) => c.querySelector(`[data-eq="${slot}"]`));
+    if (card) { const st = card.querySelector('.gstats'); if (st) st.outerHTML = gStatsHtml(slot); }
+  });
 }
 function bOptVal(slot) {
   const id = B.opt[slot]; if (!id) return null;
@@ -809,18 +878,7 @@ function bRenderPreview() {
     const x0 = cx - ps / 2, y0 = 26;
     ctx.imageSmoothingEnabled = true;
     ctx.drawImage(JOBS_IMG, sx, sy, m.cell, m.cell, x0, y0, ps, ps);
-    // ซ้อนอุปกรณ์บนตัวจริง: หมวก / เสื้อ / กางเกง / อาวุธ / เครื่องประดับ
-    ctx.globalAlpha = .92;
-    if (B.eq.top) drawItemSprite(ctx, B.eq.top, cx - 33, y0 + ps * .42, 66);
-    if (B.eq.pants) drawItemSprite(ctx, B.eq.pants, cx - 25, y0 + ps * .68, 50);
-    ctx.globalAlpha = 1;
-    if (B.eq.hat) drawHatSprite(ctx, B.eq.hat, cx - 32, y0 + ps * .04, 64);
-    if (B.eq.weapon) {
-      ctx.save(); ctx.translate(x0 + ps * .82, y0 + ps * .52); ctx.rotate(-0.8);
-      drawItemSprite(ctx, B.eq.weapon, -27, -27, 54);
-      ctx.restore();
-    }
-    if (B.eq.acc) drawItemSprite(ctx, B.eq.acc, x0 + ps * .84, y0 + ps * .18, 30);
+    // ซ้อนอุปกรณ์บนตัวจริง: แสดงในการ์ดอุปกรณ์ข้างตัวแทน (ไม่ทับตัวละคร)
   } else {
     // fallback: ตัวการ์ตูนวาดเอง
     const topY = H * .32, bodyH = H * .28;
@@ -850,19 +908,14 @@ function bRenderPreview() {
     if (B.eq.acc) drawItemSprite(ctx, B.eq.acc, cx + 66, topY + 2, 32);
   }
   ctx.font = '700 14px "Noto Sans Thai", sans-serif'; ctx.fillStyle = '#e8ecf7'; ctx.textAlign = 'center';
-  ctx.fillText(j.n + ' Lv' + B.lv + ' · Job ' + B.jlv + ' · ' + (B.gender === 'f' ? 'หญิง' : 'ชาย'), W / 2, 24);
+  ctx.fillText(j.n + ' Lv' + B.lv + ' · Job ' + B.jlv, W / 2, 22);
   ctx.textAlign = 'left';
-  // equipped badges
-  const row = ['top', 'pants', 'acc'].map((s) => B.eq[s] ? aiHtml('items', B.eq[s], 40) : '').filter(Boolean).join(' ');
-  const wBadge = B.eq.weapon ? aiHtml('items', B.eq.weapon, 40) : '';
-  const hBadge = B.eq.hat ? aiHat(B.eq.hat, 40) : '';
-  $('#bPreviewBadge').innerHTML = (wBadge || row || hBadge) ? `<div class="eqbadges">${hBadge}${wBadge}${row}</div>` : '<div class="hint">ยังไม่สวมอุปกรณ์ — เลือกอุปกรณ์ด้านข้างเพื่อจำลองใส่บนตัวละคร</div>';
 }
 
 function bCompute() {
   const j = JOB[B.job], lv = B.lv;
   const w = D.weapons.find((x) => x.id === B.eq.weapon) || null;
-  const eqSlots = ['top', 'pants', 'hat', 'acc'].map((s) => ({ slot: s, it: D.armors.find((a) => a.id === B.eq[s]) }));
+  const eqSlots = ['top', 'pants', 'hat', 'acc', 'robe', 'glasses', 'shield'].map((s) => ({ slot: s, it: D.armors.find((a) => a.id === B.eq[s]) }));
   // sums from equipment
   let eqAtk = 0, eqDef = 0, eqMdef = 0, eqHp = 0, eqSp = 0, eqAtkPct = 0, eqMatkPct = 0, eqHpPct = 0, eqSpPct = 0, eqCrit = 0, eqFlee = 0, eqHit = 0, eqAspd = 0, eqPen = 0;
   eqSlots.forEach(({ slot, it }) => {
@@ -893,14 +946,16 @@ function bCompute() {
     if (o.effect === 'crit') eqCrit += o.val;
     if (o.effect === 'aspd') eqAspd += o.val;
   }
-  const strE = bEff(B.stats.str), agiE = bEff(B.stats.agi), vitE = bEff(B.stats.vit), intE = bEff(B.stats.int), dexE = bEff(B.stats.dex), lukE = bEff(B.stats.luk);
+  const strE = bEff(5 + B.stats.str + bEqStat('str')), agiE = bEff(5 + B.stats.agi + bEqStat('agi')), vitE = bEff(5 + B.stats.vit + bEqStat('vit')), intE = bEff(5 + B.stats.int + bEqStat('int')), dexE = bEff(5 + B.stats.dex + bEqStat('dex')), lukE = bEff(5 + B.stats.luk + bEqStat('luk'));
   const magic = w && MAGIC_WT.has(w.wt), ranged = w && RANGED_WT.has(w.wt);
   const wAtk = w ? w.atk * (1 + 0.04 * wRef) : 0;
+  const refMul = (1 + 0.04 * wRef).toFixed(2);
   const statPart = magic ? intE * 1.6 : ranged ? dexE * 1.6 : strE * 1.6;
-  const atk = wAtk + statPart + 0.6 * lv + eqAtk;
-  const atkPct = 1 + (eqAtkPct + (w && !magic ? 0 : 0)) / 100;
-  const atkTotal = Math.round(atk * atkPct);
-  const matk = magic ? Math.round((wAtk + intE * 1.6 + 0.6 * lv + eqAtk) * (1 + eqMatkPct / 100)) : Math.round((eqAtk) * (1 + eqMatkPct / 100));
+  const baseAtk = Math.round(statPart + 0.6 * lv + eqAtk);
+  const atkPct = 1 + eqAtkPct / 100;
+  const atkTotal = Math.round((baseAtk + wAtk) * atkPct);
+  const matkBase = Math.round(intE * 1.6 + 0.6 * lv + eqAtk);
+  const matk = magic ? Math.round((baseAtk + wAtk) * (1 + eqMatkPct / 100)) : Math.round((matkBase) * (1 + eqMatkPct / 100));
   const hpBase = 150 + (j.hp || 5) * lv + eqHp;
   const maxHp = Math.round(hpBase * (1 + 0.01 * vitE) * (1 + eqHpPct / 100) * bHPmul());
   const maxSp = Math.round((60 + (j.sp || 2) * lv + eqSp) * (1 + 0.01 * intE) * (1 + eqSpPct / 100));
@@ -908,30 +963,53 @@ function bCompute() {
   const crit = Math.min(100, 0.3 * lukE + eqCrit);
   const critDmg = (1.4 + 0.004 * lukE).toFixed(2);
   const acc = Math.min(100, 88 + 0.15 * dexE + eqHit);
-  const dodgeSoft = Math.min(50, 0.3 * agiE).toFixed(1);
-  const dodgeFull = Math.min(20, 0.15 * agiE).toFixed(1);
+  const hitShow = Math.round(lv * 1.1 + dexE * 0.5 + eqHit);
+  const fleeShow = Math.round(lv * 1.5 + agiE * 1.6 + eqFlee);
   const dmgRed = Math.min(30, 0.2 * vitE).toFixed(1);
   const castSpd = Math.min(50, 0.6 * dexE).toFixed(1);
+  const hpReg = (2 + vitE * 0.02).toFixed(1), spReg = (2 + intE * 0.02).toFixed(1);
+  const dodgeSoft = Math.min(50, 0.3 * agiE).toFixed(1);
+  const dodgeFull = Math.min(20, 0.15 * agiE).toFixed(1);
   const dmgType = w ? ({ melee: 'ฟัน', pierce: 'เจาะ', bash: 'ทุบ', magic: 'เวท' }[magic ? 'magic' : RANGED_WT.has(w.wt) ? 'pierce' : ['gsword', 'gaxe', 'hammer', 'lance', 'huuma', 'scythe', 'qstaff'].includes(w.wt) ? 'bash' : 'melee']) : '–';
-  $('#bOut').innerHTML = `<h3>ผลลัพธ์ build</h3>
+  // รวมค่าแถวออฟทุกชิ้นสำหรับแผงสถานะละเอียด
+  const optAgg = {};
+  for (const slot of ['weapon', 'top', 'pants', 'hat', 'acc', 'robe', 'glasses', 'shield']) {
+    for (const o of bOptVals(slot)) optAgg[o.id] = (optAgg[o.id] || 0) + o.val;
+  }
+  const optRow = (id, label) => {
+    const o = D.opts.find((x) => x.id === id); if (!o) return '';
+    const v = optAgg[id] || 0;
+    const capS = o.cap ? (o.cap > 1 ? 'จำกัด ' + o.cap + (o.unit || '') : 'จำกัด ' + Math.round(o.cap * 100) + '%') : 'ไม่มีเพดาน';
+    return `<tr><td>${esc(label || o.label)}</td><td>${v ? (o.cap && o.cap <= 1 && o.unit === '%' ? '+' + Math.round(v * 100) + '%' : '+' + v + (o.unit || '')) : '–'}</td><td><small>${capS}</small></td></tr>`;
+  };
+  const atkLine = magic
+    ? `MATK ${matkBase.toLocaleString()} + ${Math.round(wAtk).toLocaleString()}${wRef ? ' ×' + refMul : ''}`
+    : `ATK ${baseAtk.toLocaleString()} + ${Math.round(wAtk).toLocaleString()}${wRef ? ' ×' + refMul : ''}${atkPct > 1 ? ' (+' + Math.round((atkPct - 1) * 100) + '% ออฟ)' : ''}`;
+  $('#bOut').innerHTML = `<h3>สถานะ (แบบหน้า C)</h3>
     <div class="outgrid">
-      <div class="out"><b>${maxHp.toLocaleString()}</b><small>HP สูงสุด${bHPmul() > 1 ? ' (×' + bHPmul() + ' โบนัสเลเวลสูง)' : ''}</small></div>
-      <div class="out"><b>${maxSp.toLocaleString()}</b><small>SP สูงสุด</small></div>
-      <div class="out"><b>${magic ? matk.toLocaleString() : atkTotal.toLocaleString()}</b><small>${magic ? 'MATK' : 'ATK'}${wRef ? ' (ตีบวก +' + wRef + ')' : ''}</small></div>
-      ${!magic ? `<div class="out"><b>${matk.toLocaleString()}</b><small>MATK (จากอุปกรณ์)</small></div>` : ''}
-      <div class="out"><b>${aspd.toFixed(0)}%</b><small>ความเร็วโจมตี</small></div>
-      <div class="out"><b>${crit.toFixed(1)}%</b><small>โอกาสคริติคอล</small></div>
-      <div class="out"><b>×${critDmg}</b><small>ดาเมจคริติคอล</small></div>
-      <div class="out"><b>${acc.toFixed(0)}%</b><small>ความแม่น</small></div>
-      <div class="out"><b>${dodgeSoft}%</b><small>หลบเฉียด</small></div>
-      <div class="out"><b>${dodgeFull}%</b><small>หลบทั้งดอก</small></div>
-      <div class="out"><b>−${dmgRed}%</b><small>ดาเมจที่โดน (VIT)</small></div>
-      <div class="out"><b>${castSpd}%</b><small>ความเร็วร่าย</small></div>
-      <div class="out"><b>${eqDef + Math.floor(wRef / 2)}</b><small>DEF รวม</small></div>
-      <div class="out"><b>${eqMdef}</b><small>MDEF รวม</small></div>
+      <div class="out"><b>${atkLine}</b><small>${dmgType} · ธาตุ ${EL.th(w ? w.el : 'neutral')}</small></div>
+      <div class="out"><b>${magic ? Math.round(baseAtk + eqAtk) : matk.toLocaleString()}</b><small>${magic ? 'ATK (ประชิด)' : 'MATK'}</small></div>
+      <div class="out"><b>${hitShow}</b><small>HIT</small></div>
+      <div class="out"><b>${crit.toFixed(0)}%</b><small>CRI (LUK 0.3%/แต้ม + ออฟ)</small></div>
+      <div class="out"><b>${aspd.toFixed(0)} ×${(aspd / 100).toFixed(2)}</b><small>ASPD (AGI 0.5%/แต้ม)</small></div>
+      <div class="out"><b>${castSpd}%</b><small>เวทเร็ว (DEX 0.6%/แต้ม)</small></div>
+      <div class="out"><b>${5 + eqDef + Math.floor(wRef / 2)}</b><small>DEF (ฐาน 5 + เกราะ + ตีบวก)</small></div>
+      <div class="out"><b>${eqMdef}</b><small>MDEF</small></div>
+      <div class="out"><b>${fleeShow} <span style="color:var(--grn)">+${(0.15 * agiE).toFixed(0)}%</span></b><small>FLEE (หลบเฉียด ${dodgeSoft}% / ทั้งดอก ${dodgeFull}%)</small></div>
+      <div class="out"><b>${maxHp.toLocaleString()}</b><small>HP${bHPmul() > 1 ? ' (×' + bHPmul() + ' เลเวลสูง)' : ''} · ลดดาเมจโดน ${dmgRed}%</small></div>
+      <div class="out"><b>${maxSp.toLocaleString()}</b><small>SP</small></div>
+      <div class="out"><b>HP ${hpReg} · SP ${spReg}</b><small>ฟื้นอัตโนมัติ/วิ (ประมาณ)</small></div>
+      <div class="out"><b>+${acc.toFixed(0)}%</b><small>ความแม่นยำ (88% + 0.15%/DEX)</small></div>
+      <div class="out"><b>ดาเมจคริ ×${critDmg}</b><small>LUK 0.4%/แต้ม</small></div>
       <div class="out"><b>${dmgType}</b><small>ชนิดดาเมจอาวุธ</small></div>
     </div>
-    <div class="note" style="margin-top:8px">สูตรจากวิกิ (สเตตัส&อาวุธ): ${magic ? 'INT' : ranged ? 'DEX' : 'STR'} ×1.6 + 0.6×Lv, ซอฟต์แคป ${bCap()} ต่อสเตตัส (เกิน ×0.4), อาวุธตีบวก ATK +4%/เลเวล, เกราะ DEF +1/2 เลเวล + HP 0.5%/เลเวล · ${dmgType !== 'เวท' ? 'ชนิดดาเมจ: ทุบ×เกราะหนัก 1.25 · เจาะ×หนัง 1.25 · ฟัน×เนื้อ 1.25 · เวท×ภูต 1.25' : 'เวทโดนภูต ×1.25'} · ค่า HP/SP ฐานและผลสกิลพาสซีฟเป็นการประมาณ</div>`;
+    <h3 style="margin-top:14px">สถานะละเอียด</h3>
+    <div class="outgrid2">
+      <div><b>โจมตี</b><table class="src">${optRow('pen', 'เจาะเกราะ')}${optRow('mpen', 'เจาะเวท')}${optRow('critDmg', 'ดาเมจคริติคอล')}${optRow('leech', 'ดูดเลือด')}${optRow('spLeech', 'ดูด SP')}${optRow('race', 'ดาเมจต่อเผ่าหนึ่ง')}${optRow('el', 'ดาเมจต่อธาตุหนึ่ง')}${optRow('boss', 'ดาเมจต่อบอส')}${optRow('hit', 'HIT เพิ่ม')}${optRow('aspd', 'ความเร็วโจมตี')}</table></div>
+      <div><b>ป้องกัน & ร่าย</b><table class="src">${optRow('resEl', 'ต้านธาตุ (ธาตุเดียว)')}${optRow('resSt', 'ต้านสถานะ (สถานะเดียว)')}${optRow('resRace', 'ต้านเผ่า (เผ่าเดียว)')}${optRow('resBoss', 'ต้านบอส')}${optRow('resMelee', 'กันระยะประชิด')}${optRow('resRange', 'กันยิงไกล')}${optRow('cast', 'ร่ายเร็วขึ้น')}${optRow('acd', 'ดีเลย์หลังร่ายสั้นลง')}${optRow('cdr', 'คูลดาวน์สั้นลง')}${optRow('spCost', 'สกิลใช้ SP น้อยลง')}</table></div>
+      <div><b>โจมตีเวท & อื่น ๆ</b><table class="src">${optRow('matk', 'MATK เพิ่ม')}${optRow('atk', 'ATK เพิ่ม')}${optRow('hpPct', 'HP สูงสุด')}${optRow('spPct', 'SP สูงสุด')}${optRow('spKill', 'ได้ SP เมื่อฆ่า')}${optRow('stat', 'ค่าสเตตัสเพิ่ม')}${optRow('inflict', 'ทำให้ติดสถานะ')}${optRow('proc', 'ตีโดนแล้วร่ายเวท')}${optRow('spd', 'ความเร็วเคลื่อนที่')}${optRow('flee', 'FLEE เพิ่ม')}</table></div>
+    </div>
+    <div class="note" style="margin-top:8px">เพดาน (จำกัด) มาจากข้อมูลออฟของวิกิ · แถวที่ยังไม่มีออฟจะขึ้น – · สูตรสเตตัสจากวิกิ (สเตตัส&อาวุธ) ส่วนค่าฐาน HP/SP/HIT/FLEE/ฟื้นอัตโนมัติ เป็นการประมาณ · ATK รูปแบบ "ฐาน + อาวุธ ×คูณตีบวก" ตามหน้าจอเกม</div>`;
   bRenderPreview();
 }
 
@@ -945,11 +1023,10 @@ function bRenderAll() {
 }
 function bInit() {
   bJob.innerHTML = D.jobs.map((j) => `<option value="${j.id}" ${j.id === B.job ? 'selected' : ''}>${esc(j.n)}</option>`).join('');
-  bJob.onchange = () => { B.job = bJob.value; B.skills = {}; B.eq = { weapon: '', top: '', pants: '', hat: '', acc: '' }; B.ref = { weapon: 0, top: 0, pants: 0, hat: 0, acc: 0 }; B.opt = { weapon: [], top: [], pants: [], hat: [], acc: [] }; B.otier = {}; bRenderAll(); };
+  bJob.onchange = () => { B.job = bJob.value; B.skills = {}; B.eq = { weapon: '', top: '', pants: '', hat: '', acc: '', robe: '', glasses: '', shield: '' }; B.ref = { weapon: 0, top: 0, pants: 0, hat: 0, acc: 0, robe: 0, glasses: 0, shield: 0 }; B.opt = { weapon: [], top: [], pants: [], hat: [], acc: [], robe: [], glasses: [], shield: [] }; B.otier = {}; bRenderAll(); };
   bLv.oninput = () => { B.lv = +bLv.value; bRenderAll(); };
   bJobLv.oninput = () => { B.jlv = +bJobLv.value; bRenderAll(); };
-  $('#bSpPerLv').onchange = (e) => { B.spPerLv = +e.target.value; bRenderStats(); bCompute(); };
-  $('#bGender').onchange = (e) => { B.gender = e.target.value; bRenderPreview(); };
+  $('#bGender').onchange = (e) => { B.gender = e.target.value; const gl = $('#bGenderLabel'); if (gl) gl.textContent = e.target.value === 'f' ? 'หญิง' : 'ชาย'; };  $('#bGrade').onchange = (e) => { B.gradeFilter = +e.target.value || ''; bRenderEquip(); bCompute(); };
   cur.wts = wtsOf(JOB[B.job]);
   bRenderAll();
 }

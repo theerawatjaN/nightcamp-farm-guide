@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.v13.css">
+<link rel="stylesheet" href="css/style.v15.css">
 </head>
 <body>
 <header class="top">
@@ -128,15 +128,23 @@
         <label class="sel"><span>อาชีพ</span><select id="bJob"></select></label>
         <label class="sel"><span>เลเวลตัวละคร <b id="bLvN">50</b></span><input type="range" id="bLv" min="1" max="99" value="50"></label>
         <label class="sel"><span>เลเวลอาชีพ (Job Lv) <b id="bJobLvN">50</b></span><input type="range" id="bJobLv" min="1" max="70" value="50"></label>
-        <label class="sel"><span>แต้มสเตตัสต่อเลเวล (สมมติฐาน)</span><select id="bSpPerLv"><option>3</option><option>4</option><option selected>5</option></select></label>
+        <label class="sel"><span>เกรดอุปกรณ์</span><select id="bGrade"><option value="">ทั้งหมด</option><option value="1">เกรด 1</option><option value="2">เกรด 2</option><option value="3">เกรด 3</option><option value="4">เกรด 4</option></select></label>
         <label class="sel"><span>เพศ (พรีวิว)</span><select id="bGender"><option value="m" selected>ชาย</option><option value="f">หญิง</option></select></label>
       </div>
     </div>
+    <div class="card" id="bGear" style="margin-bottom:12px">
+      <div class="gearui">
+        <div class="gearcol" id="gearLeft"></div>
+        <div class="gearcenter">
+          <canvas id="bCanvas" width="240" height="280"></canvas>
+          <div class="note">ตัวละครจริงจากเกม · เพศ: <span id="bGenderLabel">ชาย</span></div>
+        </div>
+        <div class="gearcol" id="gearRight"></div>
+      </div>
+    </div>
     <div class="buildgrid">
-      <div class="card" id="bPreviewCard"><h3>🧍 ตัวละครของคุณ</h3><canvas id="bCanvas" width="260" height="300" style="width:100%;border-radius:12px"></canvas><div id="bPreviewBadge"></div><div class="note">* อุปกรณ์ใส่ได้ทั้งสองเพศ (เกมไม่มีข้อจำกัดเพศ) — เพศเปลี่ยนเฉพาะลุคตัวละคร</div></div>
       <div class="card" id="bStats"></div>
       <div class="card" id="bSkills"></div>
-      <div class="card" id="bEquip"></div>
       <div class="card" id="bOut"></div>
     </div>
   </section>
@@ -168,7 +176,7 @@
 
 <footer class="foot">ข้อมูลอ้างอิงจาก <a href="https://play.nightcamp.app/wiki/" target="_blank" rel="noopener">วิกิ Night Camp</a> (SS2 v0.2) · ตัวเลข EXP/เวลาเป็นการประมาณการ สมมติฐานระบุไว้ในหน้าเครื่องมือ</footer>
 
-<script src="js/data.v13.js"></script>
-<script src="js/app.v13.js"></script>
+<script src="js/data.v15.js"></script>
+<script src="js/app.v15.js"></script>
 </body>
 </html>
