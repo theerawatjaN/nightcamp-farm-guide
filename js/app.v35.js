@@ -1349,8 +1349,8 @@ function initComboDelegation() {
   window.__comboDelegation = true;
   document.addEventListener('focusin', (e) => {
     const inp = e.target.closest && e.target.closest('.comboinput');
+    comboCloseAll(); // ปิดอันเก่าก่อน — เปิดได้ทีละอัน
     if (inp) comboRender(inp.closest('.scombo'), '');
-    else comboCloseAll();
   });
   document.addEventListener('input', (e) => {
     if (e.target.classList && e.target.classList.contains('comboinput')) comboRender(e.target.closest('.scombo'), e.target.value);
