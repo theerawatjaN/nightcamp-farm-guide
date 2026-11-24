@@ -57,14 +57,14 @@ function srcHtml(src) {
 }
 
 /* ---------- router ---------- */
-const pages = ['build', 'guide', 'db', 'forge', 'plan'];
+const pages = ['guide', 'db', 'forge', 'plan']; // build ถูกซ่อนชั่วคราว (v0.5)
 $('#tabs').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; showPage(b.dataset.page); });
 function showPage(p) {
   pages.forEach((x) => { $('#page-' + x).classList.toggle('on', x === p); });
   $$('#tabs button').forEach((b) => b.classList.toggle('on', b.dataset.page === p));
   location.hash = p;
 }
-$('#topMeta').textContent = 'ข้อมูล: SS2 · v0.4';
+$('#topMeta').textContent = 'ข้อมูล: SS2 · v0.5';
 
 /* ════════════════════════ PAGE 1 · คู่มืออาชีพ ════════════════════════ */
 const gJob = $('#gJob'), gLv = $('#gLv'), gLvN = $('#gLvN');
@@ -1733,7 +1733,7 @@ function drawPlanScene(c) {
 function boot() {
   unnatifyAll();
   const h = location.hash.replace('#', '');
-  showPage(pages.includes(h) ? h : 'build');
+  showPage(pages.includes(h) ? h : 'guide');
   openJob('firemage');
   renderDb();
   renderForge();
