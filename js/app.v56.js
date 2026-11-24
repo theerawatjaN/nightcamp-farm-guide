@@ -926,6 +926,7 @@ function bRenderStats() {
     }).join('')}
     <button class="btn btn--sm btn--ghost" id="bResetStats" style="margin-top:6px">รีเซ็ตสถานะ</button>`;
   /* อัปเดตเฉพาะจุด — ไม่ rebuild การ์ด (กัน handler ซ้ำ) */
+  bStatsBindOnce();
   bStatsBudgetUpdate();
   bStatsValueUpdate();
 }
@@ -953,22 +954,27 @@ function bStatsBindOnce() {
   const box = $('#bStats');
   if (box._bound) return;
   box._bound = true;
-  $$('#bStats [data-budget]').forEach((b) => b.onclick = () => {
-    B.statBudget = Math.max(22, bStatBudget() + (+b.dataset.budget));
-    bStatsBudgetUpdate(); bCompute();
-  });
-  $$('.stbtn[data-st]', box).forEach((b) => b.onclick = () => {
-    const k = b.dataset.st, d = +b.dataset.d;
-    const totalK = 5 + B.stats[k];
-    if (d > 0) {
-      const cost = costForNext(totalK) * d;
-      if (bStatSpent() + cost > bStatBudget()) return;
-      B.stats[k] += d; B.statSpent = bStatSpent() + cost;
-    } else {
-      B.stats[k] = Math.max(0, B.stats[k] + d);
-      B.statSpent = Math.max(0, bStatSpent() - costForNext(5 + B.stats[k]) * Math.abs(d));
+  /* event delegation — ปุ่มถูกสร้างใหม่บ่อย ผูกครั้งเดียวบนการ์ดก็พอ */
+  box.addEventListener('click', (e) => {
+    if (!e.target.closest) return;
+    const ptsB = e.target.closest('[data-budget]');
+    if (ptsB) { B.statBudget = Math.max(22, bStatBudget() + (+ptsB.dataset.budget)); bStatsBudgetUpdate(); bCompute(); return; }
+    const stB = e.target.closest('[data-st]');
+    if (stB) {
+      const k = stB.dataset.st, d = +stB.dataset.d;
+      const totalK = 5 + B.stats[k];
+      if (d > 0) {
+        const cost = costForNext(totalK) * d;
+        if (bStatSpent() + cost > bStatBudget()) return;
+        B.stats[k] += d; B.statSpent = bStatSpent() + cost;
+      } else {
+        B.stats[k] = Math.max(0, B.stats[k] + d);
+        B.statSpent = Math.max(0, bStatSpent() - costForNext(5 + B.stats[k]) * Math.abs(d));
+      }
+      bStatsValueUpdate(); bCompute();
+      return;
     }
-    bStatsValueUpdate(); bCompute();
+    if (e.target.closest('#bResetStats')) { B.stats = { str: 0, agi: 0, vit: 0, int: 0, dex: 0, luk: 0 }; B.statSpent = 0; bStatsValueUpdate(); bCompute(); }
   });
   $('#bResetStats').onclick = () => { B.stats = { str: 0, agi: 0, vit: 0, int: 0, dex: 0, luk: 0 }; B.statSpent = 0; bStatsValueUpdate(); bCompute(); };
 }
