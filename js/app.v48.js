@@ -1260,7 +1260,77 @@ function bCompute() {
       <div><b>โจมตีเวท & อื่น ๆ</b><table class="src">${optRow('matk', 'MATK เพิ่ม')}${optRow('atk', 'ATK เพิ่ม')}${optRow('hpPct', 'HP สูงสุด')}${optRow('spPct', 'SP สูงสุด')}${optRow('spKill', 'ได้ SP เมื่อฆ่า')}${optRow('stat', 'ค่าสเตตัสเพิ่ม')}${optRow('inflict', 'ทำให้ติดสถานะ')}${optRow('proc', 'ตีโดนแล้วร่ายเวท')}${optRow('spd', 'ความเร็วเคลื่อนที่')}${optRow('flee', 'FLEE เพิ่ม')}</table></div>
     </div>
     <div class="note" style="margin-top:8px">เพดาน (จำกัด) มาจากข้อมูลออฟของวิกิ · แถวที่ยังไม่มีออฟจะขึ้น – · สูตรสเตตัสจากวิกิ (สเตตัส&อาวุธ) ส่วนค่าฐาน HP/SP/HIT/FLEE/ฟื้นอัตโนมัติ เป็นการประมาณ · ATK รูปแบบ "ฐาน + อาวุธ ×คูณตีบวก" ตามหน้าจอเกม</div>`;
+  B.last = { atkTotal, matk, magic, ranged, aspd };
+  bRenderDps({ atkTotal, matk, aspd }, magic);
   bRenderPreview();
+}
+/* ── บล็อคคำนวณ DPS ── */
+function skillTotalPct(d) {
+  const ms = [...d.matchAll(/([\d,]+)%\s*ของ\s*(ATK|MATK)/g)].map((x) => ({ pct: +x[1].replace(/,/g, ''), type: x[2] }));
+  if (!ms.length) return null;
+  const hits = Math.max(1, ...[...d.matchAll(/(\d+)\s*(?:ครั้ง|ลูก|ดอก|เล่ม|นัด)/g)].map((x) => +x[1]).filter((n) => n > 1 && n <= 16));
+  const pct = ms.reduce((a, m) => a + m.pct, 0) * hits;
+  return { pct, type: ms[0].type, hits };
+}
+function buffEffectsBuild() {
+  const out = { dmg: 0, el: null, list: [] };
+  for (const id of (B.dpsBuffOn || new Set())) {
+    const b = BUFF_SKILLS[id]; if (!b) continue;
+    out.dmg += b.dmg;
+    if (b.el) out.el = b.el;
+    out.list.push({ id, n: (D.skillNames[id] || {}).n || id, ...b });
+  }
+  out.dmg = Math.min(0.6, out.dmg);
+  return out;
+}
+function bRenderDps(st, magic) {
+  const box = $('#bDps'); if (!box) return;
+  const atkStat = magic ? st.matk : st.atkTotal;
+  const be = buffEffectsBuild();
+  const dmgMul = 1 + be.dmg;
+  const off = B.dpsOff || new Set();
+  const skills = bPathJobs().flatMap((x) => x.sk).filter((s) => s.active && !off.has(s.id));
+  const rows = [];
+  let rotDmg = 0, rotTime = 0;
+  for (const s of skills) {
+    const t = skillTotalPct(s.d); if (!t) continue;
+    const base = t.type === 'MATK' ? st.matk : st.atkTotal;
+    const dmgPerCast = t.pct / 100 * base * dmgMul;
+    const period = Math.max(s.cd || 0, 0.4);
+    const dps = dmgPerCast / period;
+    rotDmg += dmgPerCast; rotTime += period;
+    rows.push({ s, t, dmgPerCast, period, dps });
+  }
+  rows.sort((a, b) => b.dps - a.dps);
+  const rotDps = rotTime > 0 ? rotDmg / rotTime : 0;
+  const basicDps = Math.round((magic ? st.matk : st.atkTotal) * (st.aspd / 100));
+  const elNote = be.el ? ` 🪽 ธาตุดาเมจเป็น<b>${EL.th(be.el)}</b> (จากบัฟ) — โบนัสต่อมอนที่แพ้ธาตุนี้ไม่รวมในตัวเลขดิบ` : '';
+  box.innerHTML = `<h3>⚔️ คำนวณ DPS</h3>
+    <div class="outgrid">
+      <div class="out"><b>${Math.round(rotDps).toLocaleString()}</b><small>DPS วงจรสกิล (สูงสุดโดยประมาณ)</small></div>
+      <div class="out"><b>${basicDps.toLocaleString()}</b><small>DPS ตีปกติ (จาก ASPD)</small></div>
+      <div class="out"><b>${dmgMul > 1 ? '+' + Math.round((dmgMul - 1) * 100) + '%' : '–'}</b><small>บัฟดาเมจที่เลือก</small></div>
+    </div>
+    ${be.el ? `<div class="bonus" style="margin-top:8px">🪽 บัฟทำให้ดาเมจเป็นธาตุ${EL.th(be.el)} — โบนัสต่อมอนที่แพ้ธาตุนี้จะเพิ่มในการฟาร์มจริง (ไม่รวมใน DPS ดิบ)</div>` : ''}
+    <h4 style="margin:12px 0 4px">🧿 บัฟที่เลือกใช้</h4>
+    <div class="chips">${Object.keys(BUFF_SKILLS).map((id) => {
+      const b = BUFF_SKILLS[id];
+      const name = (D.skillNames[id] || {}).n || id;
+      const on = (B.dpsBuffOn || new Set()).has(id);
+      return `<label class="chip ${on ? 'on' : ''}"><input type="checkbox" data-dpsbuff="${id}" ${on ? 'checked' : ''}>${esc(name)}${b.dmg ? ' <small>+' + Math.round(b.dmg * 100) + '%</small>' : ''}</label>`;
+    }).join('')}</div>
+    <h4 style="margin:12px 0 4px">✨ สกิลที่อัปมาแล้ว (ติ๊ก = ใส่วงจร)</h4>
+    <div class="chips">${bPathJobs().flatMap((x) => x.sk).filter((s) => s.active && skillTotalPct(s.d)).map((s) => {
+      const on = !off.has(s.id);
+      return `<label class="chip ${on ? 'on' : ''}"><input type="checkbox" data-dpssk="${s.id}" ${on ? 'checked' : ''}>${esc(s.n)}</label>`;
+    }).join('')}</div>
+    <table class="src" style="margin-top:10px"><tr><th>สกิล</th><th>ดาเมจรวม/คาสต์</th><th>CD</th><th>DPS</th></tr>
+    ${rows.map((r) => `<tr><td>${esc(r.s.n)}</td><td>${Math.round(r.dmgPerCast).toLocaleString()} <small>(${r.t.pct}% ${r.t.type === 'MATK' ? 'MATK' : 'ATK'}${r.t.hits > 1 ? ' ×' + r.t.hits + ' ครั้ง' : ''})</small></td><td>${r.period.toFixed(1)}s</td><td><b>${Math.round(r.dps).toLocaleString()}</b></td></tr>`).join('')}
+    <tr><th>รวมวงจร (ทุกสกิลใช้ครบ 1 รอบ)</th><td colspan="2">${rotTime.toFixed(1)} วินาที</td><td><b>${Math.round(rotDps).toLocaleString()}</b></td></tr>
+    </table>
+    <p class="note">คำนวณที่เลเวลสกิลสูงสุดจากข้อความวิกิ (สกิลบางอันมี DoT/ดาเมจระลอกที่อ่านอัตโนมัติไม่ได้ ตัวเลขอาจต่ำกว่าจริง) · ยังไม่รวม: ค่าเจาะเกราะ ธาตุต่อมอน คริติคอล · สูตร: ดาเมจ/คาสต์ ÷ (CD + 0.4s GCD)</p>`;
+  $$('[data-dpsbuff]', box).forEach((c) => c.onchange = () => { B.dpsBuffOn = B.dpsBuffOn || new Set(); c.checked ? B.dpsBuffOn.add(c.dataset.dpsbuff) : B.dpsBuffOn.delete(c.dataset.dpsbuff); bRenderDps(B.last, B.last.magic); });
+  $$('[data-dpssk]', box).forEach((c) => c.onchange = () => { B.dpsOff = B.dpsOff || new Set(); c.checked ? B.dpsOff.delete(c.dataset.dpssk) : B.dpsOff.add(c.dataset.dpssk); bRenderDps(B.last, B.last.magic); });
 }
 
 /* --- การ์ดมอนเตอร์ (กริดแบบเกม) --- */
