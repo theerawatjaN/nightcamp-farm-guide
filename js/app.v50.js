@@ -1273,14 +1273,17 @@ function skillTotalPct(d) {
   return { pct, type: ms[0].type, hits };
 }
 function buffEffectsBuild() {
-  const out = { dmg: 0, el: null, list: [] };
-  for (const id of (B.dpsBuffOn || new Set())) {
-    const b = BUFF_SKILLS[id]; if (!b) continue;
-    out.dmg += b.dmg;
-    if (b.el) out.el = b.el;
-    out.list.push({ id, n: (D.skillNames[id] || {}).n || id, ...b });
+  const out = { dmg: 0, list: [] };
+  // บัฟตัวเองจากสกิลที่อัปแต้มแล้วเท่านั้น — ดึง % ดาเมจจากข้อความสกิลจริง
+  for (const id of (B.dpsSelfOn || new Set())) {
+    const s = bPathJobs().flatMap((x) => x.sk).find((x2) => x2.id === id);
+    if (!s) continue;
+    const ms = [...s.d.matchAll(/(?:ATK|MATK|ดาเมจ)[^%\n]*?\+(\d+)%/g)].map((x) => +x[1]);
+    const pct = ms.length ? Math.max(...ms) : 0;
+    out.dmg += pct / 100;
+    out.list.push({ id, n: s.n, pct, d: s.d });
   }
-  out.dmg = Math.min(0.6, out.dmg);
+  out.dmg = Math.min(0.8, out.dmg);
   return out;
 }
 function bRenderDps(st, magic) {
@@ -1312,13 +1315,15 @@ function bRenderDps(st, magic) {
       <div class="out"><b>${dmgMul > 1 ? '+' + Math.round((dmgMul - 1) * 100) + '%' : '–'}</b><small>บัฟดาเมจที่เลือก</small></div>
     </div>
     ${be.el ? `<div class="bonus" style="margin-top:8px">🪽 บัฟทำให้ดาเมจเป็นธาตุ${EL.th(be.el)} — โบนัสต่อมอนที่แพ้ธาตุนี้จะเพิ่มในการฟาร์มจริง (ไม่รวมใน DPS ดิบ)</div>` : ''}
-    <h4 style="margin:12px 0 4px">🧿 บัฟที่เลือกใช้</h4>
-    <div class="chips">${Object.keys(BUFF_SKILLS).map((id) => {
-      const b = BUFF_SKILLS[id];
-      const name = (D.skillNames[id] || {}).n || id;
-      const on = (B.dpsBuffOn || new Set()).has(id);
-      return `<label class="chip ${on ? 'on' : ''}"><input type="checkbox" data-dpsbuff="${id}" ${on ? 'checked' : ''}>${esc(name)}${b.dmg ? ' <small>+' + Math.round(b.dmg * 100) + '%</small>' : ''}</label>`;
-    }).join('')}</div>
+    <h4 style="margin:12px 0 4px">🧿 บัฟตัวเองที่อัปแต้มแล้ว (ติ๊ก = ใช้ในการคำนวณ)</h4>
+    <div class="chips">${(() => {
+      const self = bPathJobs().flatMap((x) => x.sk).filter((s) => s.active && (B.skills[s.id] || 0) > 0 && !skillTotalPct(s.d) && /ATK \+\d+|MATK \+\d+|ความเร็วโจมตี \+\d+|คริติคอล \+\d+|ทุกสเตตัส \+\d+|เดินเร็วขึ้น|ร่ายลด/.test(s.d));
+      if (!self.length) return '<span class="hint">อาชีพนี้ไม่มีสกิลบัฟตัวเองที่อัปไว้ (บัฟปาร์ตี้จากอาชีพอื่นอยู่ในหน้า "วางแผนฟาร์ม")</span>';
+      return self.map((s) => {
+        const on = (B.dpsSelfOn || new Set()).has(s.id);
+        return `<label class="chip ${on ? 'on' : ''}"><input type="checkbox" data-dpsself="${s.id}" ${on ? 'checked' : ''}>${esc(s.n)} <small>${esc((s.d.match(/[^·\\n]{0,40}(?:\+|เพิ่ม)[^·\\n]{0,20}%?/) || [''])[0].trim())}</small></label>`;
+      }).join('');
+    })()}</div>
     <h4 style="margin:12px 0 4px">✨ สกิลที่อัปมาแล้ว (ติ๊ก = ใส่วงจร)</h4>
     <div class="chips">${(() => {
       const learnable = bPathJobs().flatMap((x) => x.sk).filter((s) => s.active && skillTotalPct(s.d) && (B.skills[s.id] || 0) > 0);
@@ -1334,6 +1339,7 @@ function bRenderDps(st, magic) {
     </table>
     <p class="note">คำนวณที่เลเวลสกิลสูงสุดจากข้อความวิกิ (สกิลบางอันมี DoT/ดาเมจระลอกที่อ่านอัตโนมัติไม่ได้ ตัวเลขอาจต่ำกว่าจริง) · ยังไม่รวม: ค่าเจาะเกราะ ธาตุต่อมอน คริติคอล · สูตร: ดาเมจ/คาสต์ ÷ (CD + 0.4s GCD)</p>`;
   $$('[data-dpsbuff]', box).forEach((c) => c.onchange = () => { B.dpsBuffOn = B.dpsBuffOn || new Set(); c.checked ? B.dpsBuffOn.add(c.dataset.dpsbuff) : B.dpsBuffOn.delete(c.dataset.dpsbuff); bRenderDps(B.last, B.last.magic); });
+  $$('[data-dpsself]', box).forEach((c) => c.onchange = () => { B.dpsSelfOn = B.dpsSelfOn || new Set(); c.checked ? B.dpsSelfOn.add(c.dataset.dpsself) : B.dpsSelfOn.delete(c.dataset.dpsself); bRenderDps(B.last, B.last.magic); });
   $$('[data-dpssk]', box).forEach((c) => c.onchange = () => { B.dpsOff = B.dpsOff || new Set(); c.checked ? B.dpsOff.delete(c.dataset.dpssk) : B.dpsOff.add(c.dataset.dpssk); bRenderDps(B.last, B.last.magic); });
 }
 
