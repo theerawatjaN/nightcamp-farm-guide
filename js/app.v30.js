@@ -876,6 +876,7 @@ const B = {
   slotGrade: {},
   opt: { weapon: [], top: [], pants: [], hat: [], acc: [], robe: [], glasses: [], shield: [] },
   otier: {},
+  taint: {},
 };
 const STAT_TH = { str: 'STR พลังโจมตีประชิด', agi: 'AGI ความเร็ว/หลบ', vit: 'VIT พลังชีวิต', int: 'INT พลังเวท', dex: 'DEX ความแม่น/ธนู', luk: 'LUK โชค/คริ' };
 const RANGED_WT = new Set(['bow', 'xbow', 'pistol', 'shotgun', 'instrument', 'whip']);
@@ -900,6 +901,12 @@ function bEqStat(k) {
   for (const slot of ['top', 'pants', 'hat', 'acc', 'robe', 'glasses', 'shield']) {
     const it = D.armors.find((a) => a.id === B.eq[slot]);
     if (it && it.st && it.st[k]) s += it.st[k];
+  }
+  // แถวออฟชนิด "ค่าสเตตัส" เพิ่มสเตตัสตรง ๆ
+  for (const slot of ['weapon', 'top', 'pants', 'hat', 'acc', 'robe', 'glasses', 'shield']) {
+    for (const o of bOptVals(slot)) {
+      if (o.id === 'stat' && (o.sub || '').toLowerCase() === k) s += o.val;
+    }
   }
   return s;
 }
@@ -951,12 +958,13 @@ function bOptVals(slot) {
     const o = D.opts.find((x) => x.id === id); if (!o) return null;
     const tier = (B.otier[slot + '_' + idx]) ?? 2;
     const [mn, mx] = o.tiers[Math.min(2, tier)];
-    return { id, effect: OPT_EFFECT[id], val: mx, unit: o.unit };
+    const sub = (B.optSub[slot + '_' + idx]) || (o.subs && o.subs.length ? o.subs[0] : '');
+    return { id, effect: OPT_EFFECT[id] || null, val: mx, unit: o.unit, sub };
   }).filter(Boolean);
 }
 function bOptOptions(slot) {
-  const poolMap = { weapon: 'อาวุธ', top: 'ชุดบน-ล่าง', pants: 'ชุดบน-ล่าง', hat: 'หมวก', acc: 'เครื่องประดับ' };
-  return D.opts.filter((o) => o.on.includes(poolMap[slot]) && OPT_EFFECT[o.id]);
+  const poolMap = { weapon: 'อาวุธ', top: 'ชุดบน-ล่าง', pants: 'ชุดบน-ล่าง', hat: 'หมวก', acc: 'เครื่องประดับ', robe: 'ชุดบน-ล่าง', glasses: 'เครื่องประดับ', shield: 'อาวุธ' };
+  return D.opts.filter((o) => o.on.some((p) => poolMap[slot] === p || (slot === 'weapon' && p === 'อาวุธ')));
 }
 const GEAR_LEFT = ['hat', 'acc', 'pants', 'weapon'];
 const GEAR_RIGHT = ['glasses', 'top', 'robe', 'shield'];
@@ -986,8 +994,14 @@ function gStatsHtml(slot) {
     const o = D.opts.find((x) => x.id === id); if (!o) return;
     const tier = (B.otier[slot + '_' + idx]) ?? 2;
     const [mn, mx] = o.tiers[Math.min(2, tier)];
-    lines.push(`${esc(o.label)} +${mx}${o.unit} <small>(${mn}–${mx}${o.unit})</small>`);
+    const sub = (B.optSub[slot + '_' + idx]) || (o.subs && o.subs.length ? o.subs[0] : '');
+    lines.push(`${esc(o.label)}${sub ? ' (' + esc(sub) + ')' : ''} +${mx}${o.unit} <small>(${mn}–${mx}${o.unit})</small>`);
   });
+  const tid = B.taint[slot];
+  if (tid) {
+    const tr = D.traits.find((x) => x.id === tid);
+    if (tr) lines.push(`☾ <span style="color:var(--pur)">${esc(tr.n)}</span>: <span style="color:var(--grn)">${esc(tr.up)}</span> / <span style="color:var(--red)">${esc(tr.dn)}</span>`);
+  }
   return `<div class="gstats">${lines.map((l) => `<div>${l}</div>`).join('')}</div>`;
 }
 function armorGrade(a) {
@@ -1035,12 +1049,16 @@ function bRenderEquip() {
     const optRows = rows.map((id, idx) => {
       const avail = opts.filter((o) => rows.filter((r) => r === o.id).length < 2 || o.id === id);
       const o = D.opts.find((x) => x.id === id);
+      const osub = (B.optSub[slot + '_' + idx]) || (o && o.subs && o.subs.length ? o.subs[0] : '');
       return `<div class="eqoptrow">
         <select data-optrow="${slot}" data-idx="${idx}"><option value="">— เลือกออฟ —</option>${avail.map((o2) => `<option value="${o2.id}" ${id === o2.id ? 'selected' : ''}>${esc(o2.label)}</option>`).join('')}</select>
+        ${id && o && o.subs.length ? `<select data-optsub="${slot}" data-idx="${idx}">${o.subs.map((s2) => `<option value="${esc(s2)}" ${osub === s2 ? 'selected' : ''}>${esc(s2)}</option>`).join('')}</select>` : ''}
         ${id && o ? `<select data-otier="${slot}" data-idx="${idx}">${['ธรรมดา', 'ดี', 'เทพ'].map((t2, i2) => `<option value="${i2}" ${(B.otier[slot + '_' + idx]) === i2 ? 'selected' : ''}>${t2}</option>`).join('')}</select>` : ''}
         <button class="stbtn" data-optdel="${slot}" data-idx="${idx}">✕</button>
       </div>`;
     }).join('') + (rows.length < 4 ? `<button class="stbtn optadd" data-optadd="${slot}">+ ออฟ (${rows.length}/4)</button>` : '<small class="hint">ครบ 4 แถว</small>');
+    const tsel = B.taint[slot] || '';
+    const taintSel = `<label class="sel"><span>แปดเปื้อน ☾</span><select data-taint="${slot}"><option value="">ไม่มี</option>${D.traits.map((t2) => `<option value="${t2.id}" ${tsel === t2.id ? 'selected' : ''}>☾ ${esc(t2.n)}</option>`).join('')}</select></label>`;
     return `<div class="gslot">
       <div class="gselrow">
         <span class="gicon">${it ? (slot === 'hat' ? (aiHat(it.id, 30) || aiHtml('items', it.id, 30)) : (aiHtml('items', it.id, 30) || slotIcon(slot === 'weapon' ? 'weapon' : slot))) : '<span class="gemptyic">＋</span>'}</span>
@@ -1052,6 +1070,7 @@ function bRenderEquip() {
       <div class="eqopts">
         ${gradeSel}
         <label class="sel"><span>ตีบวก</span><select data-ref="${slot}"><option value="" ${!B.ref[slot] ? 'selected' : ''}>+0</option>${[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => `<option value="${n}" ${B.ref[slot] === n ? 'selected' : ''}>+${n}</option>`).join('')}</select></label>
+        ${taintSel}
       </div>
       <div>${dots} ${rowsHint}</div>
       <div class="eqoptrows">${optRows}</div>
@@ -1062,8 +1081,10 @@ function bRenderEquip() {
   $$('[data-eq]').forEach((s) => s.onchange = () => { B.eq[s.dataset.eq] = s.value; bRenderEquip(); bCompute(); });
   $$('[data-grad]').forEach((s) => s.onchange = () => { B.slotGrade[s.dataset.grad] = +s.value || ''; bRenderEquip(); bCompute(); });
   $$('[data-ref]').forEach((s) => s.onchange = () => { B.ref[s.dataset.ref] = +s.value; bCompute(); gStatsRefresh(); });
-  $$('[data-optrow]').forEach((s) => s.onchange = () => { B.opt[s.dataset.optrow][+s.dataset.idx] = s.value; bRenderEquip(); bCompute(); });
+  $$('[data-optrow]').forEach((s) => s.onchange = () => { B.opt[s.dataset.optrow][+s.dataset.idx] = s.value; delete B.optSub[s.dataset.optrow + '_' + s.dataset.idx]; bRenderEquip(); bCompute(); });
+  $$('[data-optsub]').forEach((s) => s.onchange = () => { B.optSub = B.optSub || {}; B.optSub[s.dataset.optsub + '_' + s.dataset.idx] = s.value; bCompute(); gStatsRefresh(); });
   $$('[data-otier]').forEach((s) => s.onchange = () => { B.otier[s.dataset.otier + '_' + s.dataset.idx] = +s.value; bCompute(); gStatsRefresh(); });
+  $$('[data-taint]').forEach((s) => s.onchange = () => { B.taint[s.dataset.taint] = s.value; bCompute(); gStatsRefresh(); });
   $$('[data-optdel]').forEach((b) => b.onclick = () => { const slot = b.dataset.optdel; B.opt[slot].splice(+b.dataset.idx, 1); bRenderEquip(); bCompute(); });
   $$('[data-optadd]').forEach((b) => b.onclick = () => { if (B.opt[b.dataset.optadd].length < 4) { B.opt[b.dataset.optadd].push(''); bRenderEquip(); } });
 }
@@ -1202,6 +1223,7 @@ function bCompute() {
     if (o.effect === 'crit') eqCrit += o.val;
     if (o.effect === 'aspd') eqAspd += o.val;
   }
+  const Bt = { ...B.taint };
   const strE = bEff(5 + B.stats.str + bEqStat('str')), agiE = bEff(5 + B.stats.agi + bEqStat('agi')), vitE = bEff(5 + B.stats.vit + bEqStat('vit')), intE = bEff(5 + B.stats.int + bEqStat('int')), dexE = bEff(5 + B.stats.dex + bEqStat('dex')), lukE = bEff(5 + B.stats.luk + bEqStat('luk'));
   const magic = w && MAGIC_WT.has(w.wt), ranged = w && RANGED_WT.has(w.wt);
   const wAtk = w ? w.atk * (1 + 0.04 * wRef) : 0;
@@ -1336,24 +1358,41 @@ function searchifySelect(sel) {
   });
   const items = Array.from(sel.options);
   items.forEach((o) => { o._gp = groups.get(o) || ''; });
+  const openPanel = () => {
+    const r = wrap.getBoundingClientRect();
+    const below = window.innerHeight - r.bottom;
+    panel.classList.toggle('up', below < 300 && r.top > 300);
+    panel.classList.remove('hidden');
+  };
   const render = (q) => {
     const f = items.filter((o) => !snorm(q) || snorm(o.textContent).includes(snorm(q)) || snorm(o._gp).includes(snorm(q)));
     panel.innerHTML = f.slice(0, 80).map((o) => `<div class="comboitem ${o.selected ? 'cur' : ''}" data-v="${o.value}">${o._gp ? '<small>' + esc(o._gp) + ' ›</small> ' : ''}${esc(o.textContent.trim())}</div>`).join('') +
       (f.length > 80 ? `<div class="hint" style="padding:4px 8px">…พิมพ์เพิ่มเพื่อกรอง (ทั้งหมด ${f.length})</div>` : '') || '<div class="hint" style="padding:4px 8px">ไม่พบ</div>';
-    panel.classList.remove('hidden');
+    openPanel();
   };
   btn.addEventListener('focus', () => { btn.value = ''; render(''); });
   btn.addEventListener('input', () => render(btn.value));
   btn.addEventListener('keydown', (e) => { if (e.key === 'Enter') { const first = panel.querySelector('.comboitem'); if (first) first.click(); e.preventDefault(); } });
-  panel.addEventListener('mousedown', (e) => {
-    const it = e.target.closest('.comboitem'); if (!it) return;
-    e.preventDefault();
+  const pick = (it) => {
     sel.value = it.dataset.v;
     btn.value = it.textContent.trim();
     panel.classList.add('hidden');
+    btn.blur();
     sel.dispatchEvent(new Event('change'));
+    panel.classList.add('hidden');
+  };
+  panel.addEventListener('mousedown', (e) => {
+    const it = e.target.closest('.comboitem'); if (!it) return;
+    e.preventDefault();
+    pick(it);
+  });
+  panel.addEventListener('click', (e) => {
+    const it = e.target.closest('.comboitem'); if (!it) return;
+    if (sel.value === it.dataset.v) return;
+    pick(it);
   });
   document.addEventListener('click', (e) => { if (!wrap.contains(e.target)) { panel.classList.add('hidden'); if (btn.value.trim() === '') btn.value = label(); } });
+  document.addEventListener('focusin', (e) => { if (!wrap.contains(e.target)) { panel.classList.add('hidden'); if (btn.value.trim() === '' || btn.value.trim() !== label()) btn.value = label(); } });
 }
 function searchifyAll(root) {
   (root || document).querySelectorAll('select:not([data-sf])').forEach((sel) => { sel.dataset.sf = 1; searchifySelect(sel); });
