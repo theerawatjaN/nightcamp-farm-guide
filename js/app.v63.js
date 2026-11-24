@@ -232,7 +232,6 @@ const RUNE_INFO = {
   'เงาตีซ้ำ': { el: 'เงา', d: 'ร่ายแล้ว 30% เงาตีเป้าซ้ำ · ตีเป้าเดียวแรงขึ้น 6/10/15%' },
   'กับดัก': { el: 'ดิน', d: 'ร่ายแล้ววางกับดักที่จุดเล็ง (ทุก 5 วิ) · ตีฝูงแรงขึ้น 8/13/20%' },
   'อุกกาบาตถล่ม': { el: 'ไฟ', d: 'ร่ายแล้ว 10% อุกกาบาตถล่มตกใส่เป้า · ตีฝูงแรงขึ้น 12/20/30%' },
-  'สายฟ้าฟาด': { el: 'ลม', d: 'สกิลโจมตี: ดาวตกตามลงมา 40%/60% · ขั้น III 2 ลูก 50%' },
   'วงน้ำแข็ง': { el: 'น้ำ', d: 'ร่ายแล้ว 10% วงน้ำแข็งแตกรอบตัว มอนช้าลง · ตีฝูงแรงขึ้น 8/12/18%' },
   'หินแหลมพสุธา': { el: 'ดิน', d: 'ร่ายแล้ว 10% หินแหลมพุ่งใต้เป้า · ตีฝูงแรงขึ้น 12/20/30%' },
   'วงเวทแสงขับมาร': { el: 'ศักดิ์สิทธิ์', d: 'ร่ายแล้ว 10% วงเวทแสงขับมารใต้เป้า · ตีฝูงแรงขึ้น 12/20/30%' },
@@ -250,24 +249,16 @@ const RUNE_INFO = {
   'เร่ง': { el: '', d: 'ทุกสกิล: คูลดาวน์และดีเลย์ −15/22/30% · ดาเมจ −10%' },
   'ค้างอยู่': { el: '', d: 'สกิลชนิดพื้นที่: ทิ้งวงค้าง 2/3/4 วิ ตีทุกวิ 15/20/25%' },
   'ระเบิดศพ': { el: '', d: 'สกิลโจมตี: ตัวที่ตายระเบิด 50/75/100% ATK' },
+  'สายฟ้าฟาด': { el: 'ลม', d: 'สกิลโจมตี: ร่ายแล้ว 10% สายฟ้าฟาดเป้าและตัวข้างๆ · ตีฝูงแรงขึ้น 12/20/30%' },
 };
 const RUNE_BY_EL = { fire: 'ไฟลาม', water: 'ฟรอสต์', wind: 'สายฟ้าฟาด', poison: 'พิษซ้อน', shadow: 'เงาตีซ้ำ', holy: 'วงเวทแสงขับมาร', earth: 'หินแหลมพสุธา', undead: 'วงเวทแสงขับมาร', ghost: 'อุกกาบาตเงา', neutral: 'ดาบพายุหมุน' };
 const AOE_RE2 = /รัศมี|เป็นวง|วงกว้าง|รอบตัว|ทั้งแนว|ฝูง|กระจาย|พัด|ฝน|ศัตรูในวง|ทุก (ตัว|ศัตรู)/;
-const RUNE_ALIAS = { 'แยก': 'split', 'ขยาย': 'wide', 'จดจ่อ': 'focus', 'เสียงสะท้อน': 'echo', 'เร่ง': 'haste', 'ค้างอยู่': 'linger', 'ระเบิดศพ': 'corpse', 'เจาะเกราะ': 'apierce', 'เจาะเวท': 'wpierce', 'ดึง': 'pull', 'เด้ง': 'bounce', 'ดาบพายุหมุน': null, 'สายฟ้าฟาด': 'skyfall', 'วงเวทแสงขับมาร': null, 'หินแหลมพสุธา': null, 'อุกกาบาตถล่ม': null, 'เจ้าแห่งอสนี': null, 'อุกกาบาตเงา': null, 'ฟรอสต์': 'frostbite', 'ไฟลาม': 'wildfire', 'พิษซ้อน': 'venom', 'เงาตีซ้ำ': 'shade', 'สายฟ้าแตก': 'arc', 'กับดัก': 'trap' };
-/* ── หัวข้อรูน: ดรอป · หลอม · รวมรูน · ติดดาวแนะนำ ── */
-function drawRunes() {
-  const box = $('#gRunesBox');
-  if (!box) return;
+const RUNE_ALIAS = { 'แยก': 'split', 'ขยาย': 'wide', 'จดจ่อ': 'focus', 'เสียงสะท้อน': 'echo', 'เร่ง': 'haste', 'ค้างอยู่': 'linger', 'ระเบิดศพ': 'corpse', 'เจาะเกราะ': 'apierce', 'เจาะเวท': 'wpierce', 'ดึง': 'pull', 'เด้ง': 'bounce', 'ดาบพายุหมุน': 'spwhirl', 'สายฟ้าฟาด': 'spthunder', 'วงเวทแสงขับมาร': 'spmagnus', 'หินแหลมพสุธา': 'spquake', 'อุกกาบาตถล่ม': 'spmeteor', 'เจ้าแห่งอสนี': 'splord', 'อุกกาบาตเงา': 'spshadow', 'ฟรอสต์': 'frostbite', 'ไฟลาม': 'wildfire', 'พิษซ้อน': 'venom', 'เงาตีซ้ำ': 'shade', 'สายฟ้าแตก': 'arc', 'กับดัก': 'trap' };
+/* ── หัวข้อรูน (ในคลังไอเทม แท็บ "รูน / การ์ด"): หลอม · รวมรูน · ติดดาวแนะนำ ── */
+function runeTopicHtml() {
   const s2Table = `<div class="card"><h3>รูนซีซัน 2 — ผลตามขั้น I / II / III</h3><table class="src"><tr><th>รูน</th><th>ธาตุ</th><th>ผล (ขั้น I → II → III)</th></tr>${
     Object.entries(RUNE_INFO).map(([n, i]) => `<tr><td><b>รูน${esc(n)}</b></td><td>${i.el || '–'}</td><td>${esc(i.d)}</td></tr>`).join('')
   }</table></div>`;
-  const dropTable = `<div class="card"><h3>รูนที่ดรอปจากมอน (${D.runes.length} รูน — กดเพื่อดูแหล่งดรอปทั้งหมด)</h3><div style="margin-top:6px;line-height:2.1">${
-    D.runes.map((r) => {
-      const best = r.droppers.reduce((a, b) => (b.chance > (a?.chance || 0) ? b : a), null);
-      const bm = best ? best.maps[0] : null;
-      return `<span class="pill runechip" data-item="rune:${r.id}" title="ดรอปจาก ${r.droppers.length} มอน${best ? ' — โอกาสสูงสุด: ' + best.monN + ' (Lv' + best.lv + ') ' + pct(best.chance) : ''}">รูน${esc(r.n.replace(/^รูน /, ''))} 🔍</span>`;
-    }).join(' ')
-  }<p class="note" style="margin-top:8px">โอกาสดรอปรูนต่ำมาก (~0.01% ต่อตัว) — ฟาร์มมอนเลเวลใกล้เคียงตัวเองให้เยอะ ๆ หรือซื้อจากตลาด · ในซีซัน 2 รูนขั้น I ดรอปน้อยลงมากในบางพื้นที่ (มอนจะดรอปเมื่อเลเวลห่างจากคุณไม่เกิน ~10)</p></div></div>`;
   const craft = `<div class="card"><h3>หลอม & รวมรูน — ที่ "ป๋าหมูหริ่ง" (Papa Muri)</h3>
     <table class="src"><tr><th>ขั้น</th><th>วิธีได้มา</th><th>มูลค่าขาย (เหรียญ)</th></tr>
       <tr><td><b>รูนขั้น I</b></td><td>ดรอปจากมอน / ซื้อในตลาด</td><td>19</td></tr>
@@ -277,8 +268,8 @@ function drawRunes() {
     <div class="bonus" style="margin-top:6px"><b>วิธีติดรูน:</b> เปิดหน้า<b>สกิล (K)</b> → เลือกสกิลที่มีช่องรูน (ช่อง 1 เปิดตอนสกิลถึงครึ่งหนึ่งของเลเวลสูงสุด · ช่อง 2 ตอนถึงเลเวลสูงสุด · ตีปกติเปิดที่ Lv 40 และ 70) → ใส่รูนตามอันดับแนะนำ · <b>ถอดรูนออกฟรี</b> ทดลองได้เสมอ · ทุกอย่างที่รูนเพิ่มรวมกันได้สูงสุด <b>+50%</b> ต่อการโจมตีหนึ่งครั้ง</div></div>`;
   const stars = `<div class="card"><h3>การติดดาวแนะนำ — 3 อันดับ</h3>
     <div style="line-height:2.2">${starBadge(1)} <b>ดาวทอง</b> = อันดับ 1 — ทำ/หาก่อน คุ้มที่สุด · ${starBadge(2)} <b>ดาวเงิน</b> = อันดับ 2 — ทำต่อเมื่อตัวหลักครบ · ${starBadge(3)} <b>ดาวทองแดง</b> = อันดับ 3 — เสริมท้ายเมื่อพร้อม</div>
-    <div class="bonus" style="margin-top:8px">ดาวแนะนำโชว์ทั่วทั้งไกด์: รูนแนะนำต่อสกิล (ข้างบน) · สายฟาร์ม/บอส/PvP ที่แนะนำ · อาวุธแนะนำของแต่ละชนิด (1–3 ตัว) · เป้าหมายมอนอันดับ 1–3 ของแมพเด่น · มอนที่โอกาสดรอปวัสดุสูงสุด (ดาวทอง)</div></div>`;
-  box.innerHTML = dropTable + craft + s2Table + stars;
+    <div class="bonus" style="margin-top:8px">ดาวแนะนำโชว์ทั่วทั้งไกด์: รูนแนะนำต่อสกิล (หน้าคู่มืออาชีพ) · สายฟาร์ม/บอส/PvP ที่แนะนำ · อาวุธแนะนำของแต่ละชนิด (1–3 ตัว) · เป้าหมายมอนอันดับ 1–3 ของแมพเด่น · มอนที่โอกาสดรอปวัสดุสูงสุด (ดาวทอง)</div></div>`;
+  return craft + s2Table + stars;
 }
 const STAR_RANKS = {
   1: { sym: '★', cls: 'gold', label: 'ดาวทอง' },
@@ -297,8 +288,9 @@ function runeChipHtml(r2) {
   const tip = info ? esc(info.el ? 'ธาตุ ' + info.el + ' · ' + info.d : info.d) : esc('รูนซีซัน 2 — กดดูรายละเอียด');
   const rid = RUNE_ALIAS[r2.n];
   const st = r2.rank ? starBadge(r2.rank) + ' ' : '';
-  if (rid && D.runes.find((x) => x.id === rid)) return `<span class="pill runechip ${r2.rank ? 'star' : ''}" data-item="rune:${rid}" title="${tip} — กดดูแหล่งดรอป">${st}รูน${r2.n} 🔍</span>`;
-  return `<span class="pill runechip craft ${r2.rank ? 'star' : ''}" data-item="runeS2:${r2.n}" title="${tip} — กดดูรายละเอียด">${st}รูน${r2.n} 🔍</span>`;
+  const ic = rid ? (aiHtml('mats', 'bl_rune_' + rid + '_1', 18) || '') : '';
+  if (rid && D.runes.find((x) => x.id === rid)) return `<span class="pill runechip ${r2.rank ? 'star' : ''}" data-item="rune:${rid}" title="${tip} — กดดูแหล่งดรอป">${st}${ic}รูน${r2.n} 🔍</span>`;
+  return `<span class="pill runechip craft ${r2.rank ? 'star' : ''}" data-item="runeS2:${r2.n}" title="${tip} — กดดูรายละเอียด">${st}${ic}รูน${r2.n} 🔍</span>`;
 }
 let gModeVal = 'farm';
 function recommendRunes(s, mode) {
@@ -557,10 +549,10 @@ function drawHero(ctx, x, y, j, el, w) {
 /* ════════════════════════ PAGE 2 · คลังไอเทม ════════════════════════ */
 let dbTab = 'weapons';
 const dbQ = $('#dbQ'), dbFilters = $('#dbFilters'), dbBox = $('#dbBox'), dbCount = $('#dbCount');
-$('#dbTabs').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; dbTab = b.dataset.tab; $$('#dbTabs button').forEach((x) => x.classList.toggle('on', x === b)); renderDb(); });
+$('#dbTabs').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; dbTab = b.dataset.tab; Object.assign(dbState, { wt: '', el: '', kind: '', reg: '', job: '', rare: '' }); $$('#dbTabs button').forEach((x) => x.classList.toggle('on', x === b)); renderDb(); });
 dbQ.addEventListener('input', renderDb);
 
-const dbState = { wt: '', el: '', kind: '', reg: '', sort: 'lv' };
+const dbState = { wt: '', el: '', kind: '', reg: '', sort: 'lv', job: '', rare: '' };
 function norm(s) { return String(s || '').toLowerCase().normalize('NFKC'); }
 function matches(q, ...fields) { if (!q) return true; const s = norm(q); return fields.some((f) => norm(f).includes(s)); }
 
@@ -569,8 +561,10 @@ function renderDb() {
   if (dbTab === 'weapons') {
     dbFilters.innerHTML = `<label class="sel"><span>ชนิด</span><select id="fWt">${selOpts(D.wtypes, dbState.wt)}</select></label>
       <label class="sel"><span>ธาตุ</span><select id="fEl">${selOpts(D.elements, dbState.el)}</select></label>
+      <label class="sel"><span>อาชีพ</span><select id="fJob">${jobOpts(dbState.job)}</select></label>
+      <label class="sel"><span>ประเภท</span><select id="fRare">${rareOpts(dbState.rare)}</select></label>
       <label class="sel"><span>เรียง</span><select id="fSort"><option value="lv">เลเวล</option><option value="atk">ATK</option><option value="n">ชื่อ</option></select></label>`;
-    let list = D.weapons.filter((w) => (!dbState.wt || w.wt === dbState.wt) && (!dbState.el || w.el === dbState.el) && matches(q, w.n, w.id, w.d, w.ab));
+    let list = D.weapons.filter((w) => (!dbState.wt || w.wt === dbState.wt) && (!dbState.el || w.el === dbState.el) && weaponForJob(w, dbState.job) && matchRare(w, dbState.rare) && matches(q, w.n, w.id, w.d, w.ab));
     list.sort((a, b) => dbState.sort === 'n' ? a.n.localeCompare(b.n, 'th') : dbState.sort === 'atk' ? b.atk - a.atk : a.lv - b.lv || b.atk - a.atk);
     dbBox.innerHTML = list.map(wepCard).join('') || empty();
     dbCount.textContent = 'พบ ' + list.length + ' ชิ้น';
@@ -578,10 +572,32 @@ function renderDb() {
   } else if (dbTab === 'runes') {
     dbFilters.innerHTML = '';
     const list = D.runes.filter((r) => matches(q, r.n, r.id, r.droppers.map((d) => d.monN).join(' ')));
-    dbBox.innerHTML = list.map((r) => `<div class="wep" data-item="rune:${r.id}"><div class="ic">🃏</div>
+    dbBox.innerHTML = `<p class="note">🧿 หัวข้อรูน: หลอม · รวมรูน · ติดดาวแนะนำ — รายชื่อรูนที่ดรอปอยู่ด้านล่าง</p>` + runeTopicHtml() +
+      (list.map((r) => `<div class="wep" data-item="rune:${r.id}"><div class="ic">${aiHtml('mats', 'bl_rune_' + r.id + '_1', 44) || '🃏'}</div>
       <div class="nm" style="flex:1"><b>รูน ${esc(r.n.replace(/^รูน /, ''))}</b><small>ดรอปจาก ${r.droppers.length} มอน</small>
-      ${r.droppers.map((d) => `<span class="drop">🎮 <b>${esc(d.monN)}</b> (Lv ${d.lv}) · ${pct(d.chance)}<br><span class="dropmap">📍 ${d.maps.map((m) => esc(m.n) + ' · ' + esc(m.region)).join(' / ')}</span></span>`).join('')}</div></div>`).join('') || empty();
+      ${r.droppers.map((d) => `<span class="drop">🎮 <b>${esc(d.monN)}</b> (Lv ${d.lv}) · ${pct(d.chance)}<br><span class="dropmap">📍 ${d.maps.map((m) => esc(m.n) + ' · ' + esc(m.region)).join(' / ')}</span></span>`).join('')}</div></div>`).join('') || empty());
     dbCount.textContent = 'พบ ' + list.length + ' รูน';
+  } else if (dbTab === 'cards') {
+    dbFilters.innerHTML = `<label class="sel"><span>ประเภท</span><select id="fKind"><option value="">ทั้งหมด</option><option value="boss" ${dbState.kind === 'boss' ? 'selected' : ''}>บอส</option><option value="normal" ${dbState.kind === 'normal' ? 'selected' : ''}>ธรรมดา</option></select></label>`;
+    let list = D.materials.filter((m) => m.id.startsWith('bl_card_')).filter((m) => {
+      const mon = MON[m.id.slice(8)];
+      if (dbState.kind === 'boss') return !!(mon && mon.boss);
+      if (dbState.kind === 'normal') return !(mon && mon.boss);
+      return true;
+    });
+    list = list.filter((m) => matches(q, m.n, m.id, m.d));
+    list.sort((a, b) => ((MON[a.id.slice(8)] || {}).lv || 0) - ((MON[b.id.slice(8)] || {}).lv || 0) || a.n.localeCompare(b.n, 'th'));
+    dbBox.innerHTML = `<p class="note">🎴 การ์ดวิชามอน: ดรอปจากมอนตัวนั้น ๆ (~0.01%) · เรียนใน<b>สมุดวิชามอน</b> (ผูกกับตัวละคร) · ขายลุงโกโก้/ตลาดได้</p>` +
+      list.map((m) => {
+        const mon = MON[m.id.slice(8)];
+        const skill = (m.d || '').split(' · ')[0];
+        const isBoss = mon && mon.boss;
+        return `<div class="wep" data-item="mat:${m.id}"><div class="ic">${aiHtml('mats', m.id, 44) || '🎴'}</div>
+        <div class="nm" style="flex:1"><b>${esc(m.n)}</b>${isBoss ? ' <span class="tag r-legend">บอส</span>' : ''}<small>${esc(skill)} · ขาย ${m.p} เหรียญ</small>
+        ${mon ? `<small>🎮 จาก <b>${esc(mon.n)}</b> (Lv ${mon.lv}) · ~0.01% · 📍 ${mon.maps.map((mid) => esc((MAP[mid] || {}).n || mid)).join(' / ')}</small>` : ''}</div></div>`;
+      }).join('') || empty();
+    dbCount.textContent = 'พบ ' + list.length + ' การ์ด';
+    bindDbFilters();
   } else if (dbTab === 'sets') {
     dbFilters.innerHTML = `<label class="sel"><span>สายเกราะ</span><select id="fKind"><option value="">ทั้งหมด</option>${['hv', 'lt', 'mg', 'rg'].map((l) => `<option value="${l}" ${dbState.kind === l ? 'selected' : ''}>${LINE_TH[l]}</option>`).join('')}</select></label>`;
     const list = D.sets.filter((s) => (!dbState.kind || s.line === dbState.kind) && matches(q, s.n, s.id, s.pcs.map((p) => p.n).join(' '), s.b2, s.b3, s.pas)).sort((a, b) => a.lv - b.lv);
@@ -593,8 +609,10 @@ function renderDb() {
     dbCount.textContent = 'พบ ' + list.length + ' เซ็ต';
     bindDbFilters();
   } else if (dbTab === 'armors') {
-    dbFilters.innerHTML = `<label class="sel"><span>ช่อง</span><select id="fKind">${['top', 'pants', 'robe', 'cape', 'hat', 'glasses', 'shield', 'acc'].map((s) => `<option value="${s}" ${dbState.kind === s ? 'selected' : ''}>${slotTh(s)}</option>`).join('')}</select></label>`;
-    const list = D.armors.filter((a) => (!dbState.kind || a.s === dbState.kind) && matches(q, a.n, a.id, a.d, a.ab));
+    dbFilters.innerHTML = `<label class="sel"><span>ช่อง</span><select id="fKind">${['top', 'pants', 'robe', 'cape', 'hat', 'glasses', 'shield', 'acc'].map((s) => `<option value="${s}" ${dbState.kind === s ? 'selected' : ''}>${slotTh(s)}</option>`).join('')}</select></label>
+      <label class="sel"><span>อาชีพ</span><select id="fJob">${jobOpts(dbState.job)}</select></label>
+      <label class="sel"><span>ประเภท</span><select id="fRare">${rareOpts(dbState.rare)}</select></label>`;
+    const list = D.armors.filter((a) => (!dbState.kind || a.s === dbState.kind) && (!dbState.job || !a.set || ((D.sets.find((s) => s.id === a.set) || {}).line === jobLineId(dbState.job))) && matchRare(a, dbState.rare) && matches(q, a.n, a.id, a.d, a.ab));
     list.sort((a, b) => a.lv - b.lv);
     dbBox.innerHTML = list.map((a) => `<div class="wep" data-item="${a.id}"><div class="ic">${a.s === 'hat' ? (aiHat(a.id, 40) || aiHtml('items', a.id, 40) || slotIcon(a.s)) : (aiHtml('items', a.id, 40) || slotIcon(a.s))}</div>
       <div class="nm" style="flex:1"><b>${esc(a.n)}</b>${rTag(a.r)}<small>${slotTh(a.s)} · Lv ${a.lv}${a.set ? ' · ชุด: ' + esc((D.sets.find((s) => s.id === a.set) || {}).n || '') : ''}</small>
@@ -624,6 +642,16 @@ function renderDb() {
   }
 }
 function empty() { return '<p class="hint">ไม่พบผลลัพธ์</p>'; }
+const RARE_TH = { common: 'ธรรมดา', rare: 'แรร์', epic: 'อีพิค', legend: 'เลเจนด์', fashion: 'แฟชั่น' };
+function jobOpts(curV) { return '<option value="">ทั้งหมด</option>' + D.jobs.map((j) => `<option value="${j.id}" ${curV === j.id ? 'selected' : ''}>${esc(j.n)}${j.tier === 3 ? ' ★' : ''}</option>`).join(''); }
+function rareOpts(curV) { return '<option value="">ทั้งหมด</option>' + Object.entries(RARE_TH).map(([k, v]) => `<option value="${k}" ${curV === k ? 'selected' : ''}>${v}</option>`).join('') + `<option value="boss" ${curV === 'boss' ? 'selected' : ''}>ดรอปจากบอส</option>`; }
+function matchRare(it, r) { return !r || (r === 'boss' ? !!(it.src && it.src[0] === 'b') : it.r === r); }
+function weaponForJob(w, jid) {
+  if (!jid) return true;
+  if ((JOB[jid].wt || []).includes(w.wt)) return true;
+  return (w.wsk || []).some((b) => b[1] === jid);
+}
+function jobLineId(jid) { for (const k in jobLine) if (jobLine[k].includes(jid)) return k; return ''; }
 function selOpts(obj, curV) { return '<option value="">ทั้งหมด</option>' + Object.entries(obj).map(([k, v]) => `<option value="${k}" ${curV === k ? 'selected' : ''}>${v.th || v.n || v}</option>`).join(''); }
 function slotTh(s) { return ({ top: 'เสื้อ', pants: 'กางเกง+รองเท้า', robe: 'เสื้อคลุม', cape: 'ผ้าคลุม', hat: 'หมวก', glasses: 'แว่น', shield: 'โล่', acc: 'เครื่องประดับ' })[s] || s; }
 function slotIcon(s) { return ({ top: '👕', pants: '👖', robe: '🧥', cape: '🧣', hat: '🎩', glasses: '🕶️', shield: '🛡️', acc: '💍' })[s] || '📦'; }
@@ -634,13 +662,15 @@ function dropLine(m) {
   return (eq.length || mats.length) ? `<small style="color:var(--tx2)">🎁 ${eq.concat(mats).join(' · ')}${(m.drops || []).length > 4 ? ' …' : ''}</small>` : '';
 }
 function bindDbFilters() {
-  const fWt = $('#fWt'), fEl = $('#fEl'), fSort = $('#fSort'), fKind = $('#fKind'), fBoss = $('#fBoss'), fReg = $('#fReg');
+  const fWt = $('#fWt'), fEl = $('#fEl'), fSort = $('#fSort'), fKind = $('#fKind'), fBoss = $('#fBoss'), fReg = $('#fReg'), fJob = $('#fJob'), fRare = $('#fRare');
   if (fWt) fWt.onchange = () => { dbState.wt = fWt.value; renderDb(); };
   if (fEl) fEl.onchange = () => { dbState.el = fEl.value; renderDb(); };
   if (fSort) fSort.onchange = () => { dbState.sort = fSort.value; renderDb(); };
   if (fKind) fKind.onchange = () => { dbState.kind = fKind.value; renderDb(); };
   if (fBoss) fBoss.onchange = () => { dbState.kind = fBoss.checked ? 'boss' : ''; renderDb(); };
   if (fReg) fReg.onchange = () => { dbState.reg = fReg.value; renderDb(); };
+  if (fJob) fJob.onchange = () => { dbState.job = fJob.value; renderDb(); };
+  if (fRare) fRare.onchange = () => { dbState.rare = fRare.value; renderDb(); };
 }
 
 /* ---------- เปรียบเทียบอาวุธ (⚖️) ---------- */
@@ -710,6 +740,16 @@ document.addEventListener('click', (e) => {
 });
 function openModal(id) {
   const B = $('#modalBody');
+  if (id.startsWith('db:')) {
+    const t = id.slice(3);
+    closeModal();
+    showPage('db');
+    dbTab = t;
+    Object.assign(dbState, { wt: '', el: '', kind: '', reg: '', job: '', rare: '' });
+    $$('#dbTabs button').forEach((x) => x.classList.toggle('on', x.dataset.tab === t));
+    renderDb();
+    return;
+  }
   if (id.startsWith('mat:')) {
     const mid = id.slice(4);
     const mt = D.materials.find((x) => x.id === mid);
@@ -723,12 +763,22 @@ function openModal(id) {
       const usedIn = [];
       D.craft.forEach((c) => c.list.forEach((x) => { if ((x.mats || []).some((m2) => m2.id === mid)) usedIn.push(x.n); }));
       const best = droppers.length ? droppers[0].chance : 0;
+      let special = '';
+      if (mid.startsWith('bl_rune_')) {
+        const rid = mid.replace(/^bl_rune_|_\d$/g, ''), tier = +mid.slice(-1);
+        const dr = D.runes.find((x) => x.id === rid);
+        special = `<dt>รูนขั้น</dt><dd><b>${['I', 'II', 'III'][tier - 1]}</b> — ${tier > 1 ? `รวมจากรูนขั้น ${['I', 'II', 'III'][tier - 2]} × 3 ที่ป๋าหมูหริ่ง` : 'ดรอปจากมอน / ซื้อในตลาด'}${dr ? ` · รูนขั้น I ดรอปจาก: ${dr.droppers.slice(0, 3).map((d) => esc(d.monN) + ' (Lv' + d.lv + ') ' + pct(d.chance)).join(' · ')}…` : ''}</dd>`;
+      } else if (mid.startsWith('bl_card_')) {
+        const mon = MON[mid.slice(8)];
+        special = mon ? `<dt>การ์ดของมอน</dt><dd>ดรอปจาก <b>${esc(mon.n)}</b> (Lv ${mon.lv}) · โอกาส ~0.01% · 📍 ${mon.maps.map((m2) => esc(MAP[m2]?.n || m2)).join(' / ')}</dd>` : '';
+      }
       $('#modalBody').innerHTML = `<h2>${aiHtml('mats', mid, 40) || ''} ${esc(mt.n)}</h2>
         <div class="kv">
           <dt>รายละเอียด</dt><dd>${esc(mt.d) || '–'}</dd>
           <dt>ราคาขาย</dt><dd>${mt.p ? mt.p.toLocaleString() + ' เหรียญ' : '–'}${mt.rare ? ' · หายาก' : ''}</dd>
+          ${special}
           <dt>วิธีหา</dt><dd>${esc(mt.from) || '–'}</dd>
-          <dt>มอนที่ดรอป</dt><dd>${droppers.map((d) => `${d.chance === best && best > 0 ? starBadge(1, true) + ' ' : ''}${esc(d.m.n)} (Lv${d.m.lv}) · ${pct(d.chance)} · 📍 ${d.m.maps.map((m2) => esc(MAP[m2]?.n || m2) + ' (' + esc(MAP[m2]?.regionN || '') + ')').join(' / ')}`).join('<br>') || '– (ได้จากสกิลชีวิต/เหมืองตาม "วิธีหา")'}</dd>
+          <dt>มอนที่ดรอป</dt><dd>${droppers.map((d) => `${d.chance === best && best > 0 ? starBadge(1, true) + ' ' : ''}${esc(d.m.n)} (Lv${d.m.lv}) · ${pct(d.chance)} · 📍 ${d.m.maps.map((m2) => esc(MAP[m2]?.n || m2) + ' (' + esc(MAP[m2]?.regionN || '') + ')').join(' / ')}`).join('<br>') || '– (ดูวิธีหาด้านบน)'}</dd>
           <dt>ใช้ทำ</dt><dd>${usedIn.map(esc).join(' · ') || '–'}</dd>
         </div>`;
     }
@@ -757,7 +807,7 @@ function openModal(id) {
         <dt>ประเภท</dt><dd>รูนซีซัน 2${info && info.el ? ' · ธาตุ ' + esc(info.el) : ''}</dd>
         <dt>ผล (I/II/III)</dt><dd>${info ? esc(info.d) : '–'}</dd>
         <dt>ใส่ได้กับ</dt><dd>สกิลทุกชนิดที่มีช่องรูน (ช่อง 1 เปิดที่ครึ่งหนึ่งของเลเวลสูงสุดของสกิล, ช่อง 2 ที่เลเวลสูงสุด · ตีปกติเปิดที่ Lv 40 และ 70)</dd>
-        <dt>แหล่งที่ได้</dt><dd>รูนขั้น I ดรอปจากมอน (โอกาสต่ำ) และซื้อขายในตลาด/ขายลุงโกโก้ได้ · นำรูนขั้นเดียวกัน <b>3 อันไปรวมที่ป๋าหมูหริ่ง</b> เป็นขั้นถัดไป (I → II → III) · ดูรายละเอียดในหัวข้อ <a href="#g-runes">รูนสกิล</a> หน้าคู่มืออาชีพ</dd>
+        <dt>แหล่งที่ได้</dt><dd>รูนขั้น I ดรอปจากมอน (โอกาสต่ำ) และซื้อขายในตลาด/ขายลุงโกโก้ได้ · นำรูนขั้นเดียวกัน <b>3 อันไปรวมที่ป๋าหมูหริ่ง</b> เป็นขั้นถัดไป (I → II → III) · ดูรายละเอียดในหัวข้อ <span class="lk" data-item="db:runes">รูนสกิล — คลังไอเทม › รูน/การ์ด</span></dd>
       </div>
       <p class="note">กติกา: ทุกอย่างที่รูนเพิ่มรวมกันได้สูงสุด +50% ต่อการโจมตี · ถอดรูนออกฟรี</p>`;
   } else if (id.startsWith('rune:')) {
@@ -1777,7 +1827,6 @@ function drawPlanScene(c) {
 /* ---------- boot ---------- */
 function boot() {
   unnatifyAll();
-  drawRunes();
   const h = location.hash.replace('#', '');
   showPage(pages.includes(h) ? h : 'guide');
   openJob('firemage');
