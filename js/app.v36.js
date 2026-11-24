@@ -64,7 +64,7 @@ function showPage(p) {
   $$('#tabs button').forEach((b) => b.classList.toggle('on', b.dataset.page === p));
   location.hash = p;
 }
-$('#topMeta').textContent = 'ข้อมูล: ' + D.meta.season;
+$('#topMeta').textContent = 'ข้อมูล: SS2 · v0.3';
 
 /* ════════════════════════ PAGE 1 · คู่มืออาชีพ ════════════════════════ */
 const gJob = $('#gJob'), gLv = $('#gLv'), gLvN = $('#gLvN');
