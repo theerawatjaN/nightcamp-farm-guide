@@ -130,10 +130,28 @@ table.src th{color:var(--tx2);font-weight:600}
 .siminfo .eff .ok{color:var(--grn)} .siminfo .eff .bad{color:var(--red)} .siminfo .eff .mid{color:var(--tx2)}
 
 /* gear UI (แบบหน้าจอในเกม) */
+.sklclick{cursor:pointer}
+.sklclick:hover{border-color:var(--acc2)}
+.lk{color:var(--acc2);cursor:pointer}
+.lk:hover{text-decoration:underline}
 .runechip{cursor:pointer}
 .runechip:hover{border-color:var(--acc2);color:var(--acc2)}
 .runechip.star{border-color:var(--acc);color:var(--acc)}
 .runechip.craft{border-style:dashed}
+/* การ์ดอาวุธแบบกริด (สไตล์ในเกม) */
+.cardgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:8px;margin-top:8px}
+.wcard{position:relative;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:20px 4px 6px;text-align:center;cursor:pointer}
+.wcard.ok{background:linear-gradient(180deg,rgba(78,205,196,.16),var(--card));border-color:var(--acc2)}
+.wcard.dim{opacity:.42;filter:grayscale(.85)}
+.wcard.dim:hover{opacity:.75}
+.wcard:hover{border-color:var(--acc)}
+.wcard.star{border-color:var(--acc);box-shadow:0 0 0 1px var(--acc)}
+.wlv{position:absolute;top:3px;right:4px;background:var(--blu);color:#04122a;font-size:.6rem;font-weight:800;border-radius:6px;padding:1px 4px}
+.wstar{position:absolute;top:2px;left:4px;font-size:.8rem}
+.wic{display:block;height:50px;line-height:50px}
+.wnm{display:block;font-size:.66rem;font-weight:700;line-height:1.25;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.wsub{display:block;font-size:.58rem;color:var(--tx2)}
+
 .gearui{display:grid;grid-template-columns:1fr minmax(200px,240px) 1fr;gap:10px;align-items:start}
 @media(max-width:760px){.gearui{grid-template-columns:1fr 1fr}.gearcenter{grid-column:1/-1;order:-1}}
 .gearcol{display:flex;flex-direction:column;gap:8px}

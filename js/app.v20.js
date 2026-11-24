@@ -157,9 +157,10 @@ function drawBuilds() {
     };
     return `<div class="card"><h3>${icon} ${title}</h3>
       <div class="line-name">⭐ แนะนำ: ${ELICON[best.el] || ''} ${esc(best.n)}</div>
-      ${alt ? `<div class="hint">สายรอง: ${esc(alt.n)}${w && lineWeaponPick(new Set(alt.skills.map((s) => s.id))) ? '' : ''}</div>` : ''}
-      <div class="skl"><b>อาวุธที่ควรใช้:</b> ${w ? `${WTICON[w.wt]} ${esc(w.n)} (Lv ${w.lv} · ATK ${w.atk} · ${ELICON[w.el]}${EL.th(w.el)})` : 'อาวุธอาชีพประจำ'}</div>
-      <div class="skl"><b>สกิลหลักของสาย:</b> ${best.skills.filter((s) => s.active || /ATK \+|คริ|ความเร็ว/.test(s.d)).slice(0, 4).map((s) => esc(s.n)).join(' · ')}</div>
+      ${alt ? `<div class="hint">สายรอง: ${esc(alt.n)}</div>` : ''}
+      <div class="skl"><b>อาวุธที่ควรใช้:</b> ${w ? `<span class="lk" data-item="${w.id}" style="cursor:pointer">${WTICON[w.wt]} ${esc(w.n)} 🔍</span> <small>(Lv ${w.lv} · ATK ${w.atk} · ${ELICON[w.el]}${EL.th(w.el)})</small>` : 'อาวุธอาชีพประจำ'}</div>
+      <div class="skl"><b>สกิลหลักของสาย:</b> ${best.skills.filter((s) => s.active || /ATK \+|คริ|ความเร็ว/.test(s.d)).slice(0, 4).map((s) => `<span class="lk" data-item="sk:${s.id}" style="cursor:pointer">${esc(s.n)}</span>`).join(' · ')}</div>
+      <div class="skl"><b>🧿 รูนแนะนำสายนี้:</b> ${(() => { const seen = new Set(); const out = []; for (const s of best.skills.slice(0, 3)) for (const r2 of recommendRunes(s)) { if (!seen.has(r2.n)) { seen.add(r2.n); out.push(runeChipHtml(r2)); } } return out.slice(0, 4).join(' ') || '–'; })()}</div>
       <div class="bonus">${tips[cat]}</div></div>`;
   };
   box.innerHTML = mk('farm', '🌿', 'สายฟาร์ม (เก็บเลเวล/ไอเทม)') + mk('boss', '👑', 'สายล่าบอส') + mk('pvp', '⚔️', 'สาย PvP / ดวล') +
@@ -202,16 +203,43 @@ function runeChipHtml(r2) {
   if (rid && D.runes.find((x) => x.id === rid)) return `<span class="pill runechip ${r2.star ? 'star' : ''}" data-item="rune:${rid}" title="${tip} — กดดูแหล่งดรอป">${r2.star ? '⭐ ' : ''}รูน${r2.n} 🔍</span>`;
   return `<span class="pill runechip craft ${r2.star ? 'star' : ''}" data-item="runeS2:${r2.n}" title="${tip} — กดดูรายละเอียด">${r2.star ? '⭐ ' : ''}รูน${r2.n} 🔍</span>`;
 }
-function recommendRunes(s) {
+let gModeVal = 'farm';
+function recommendRunes(s, mode) {
+  mode = mode || gModeVal;
   const rec = [];
   const mainRune = RUNE_BY_EL[s.el] || 'ดาบพายุหมุน';
-  rec.push({ n: mainRune, star: true });
-  if (AOE_RE2.test(s.d)) rec.push({ n: 'ขยาย', star: true });
-  else rec.push({ n: 'จดจ่อ' });
-  if (s.active) rec.push({ n: 'เสียงสะท้อน' });
-  if (/ติดเผา|พิษ|เลือดออก|เย็นเฉียบ/.test(s.d)) rec.push({ n: 'ค้างอยู่' });
-  if (s.type === 'phys' && /เจาะ|ทะลุ/.test(s.d)) rec.push({ n: 'เจาะเกราะ' });
+  const aoe = AOE_RE2.test(s.d);
+  if (mode === 'pvp') {
+    rec.push({ n: 'จดจ่อ', star: true });
+    rec.push({ n: mainRune });
+    if (s.active) rec.push({ n: 'เร่ง' });
+  } else if (mode === 'boss') {
+    rec.push({ n: 'จดจ่อ', star: true });
+    rec.push({ n: 'เจาะเกราะ', star: true });
+    if (s.active) rec.push({ n: 'เสียงสะท้อน' });
+  } else {
+    rec.push({ n: mainRune, star: true });
+    rec.push({ n: aoe ? 'ขยาย' : 'แยก', star: !!aoe });
+    if (s.active) rec.push({ n: 'เสียงสะท้อน' });
+  }
   return rec.slice(0, 4);
+}
+function bestWeaponFor(ws, lv, mode) {
+  const usable = ws.filter((w) => w.lv <= lv);
+  const pool = (usable.length ? usable : ws).slice();
+  if (!pool.length) return null;
+  const KR = { L: 0, B: 1, C: 2, D: 3 };
+  const jobEl = (cur.job.sk.find((s) => s.el) || {}).el || 'neutral';
+  const wscore = (w, m) => {
+    const wsk = (w.wsk || []).some((x) => x[1] === cur.job.id) ? 1 : 0;
+    let s = wsk * 2 - (KR[w.k ?? 9] ?? 9) * 0.3 + w.atk / 100;
+    if (m === 'farm') s += (w.el === jobEl ? 1.5 : 0);
+    if (m === 'boss') s += w.atk / 80 + (w.g || 1) * 0.3;
+    if (m === 'pvp') s += (w.el === 'shadow' || w.el === 'poison' || w.el === 'holy' ? 0.8 : 0) + wsk * 0.5;
+    return s;
+  };
+  pool.sort((a, b) => wscore(b, mode) - wscore(a, mode));
+  return pool[0];
 }
 
 /* --- skill lines + weapons per line --- */
@@ -241,25 +269,16 @@ function drawLines() {
     id === bestPvp ? '<span class="tag r-legend">⚔️ PvP</span>' : '',
   ].join(' ');
   const lv = +gLv.value;
-  const starAt = (ws) => {
-    const usable = ws.filter((w) => w.lv <= lv);
-    const pool = (usable.length ? usable : ws).slice();
-    pool.sort((a, b) => {
-      const aW = (a.wsk || []).some((x) => x[1] === cur.job.id) ? 1 : 0, bW = (b.wsk || []).some((x) => x[1] === cur.job.id) ? 1 : 0;
-      const KR = { L: 0, B: 1, C: 2, D: 3 };
-      return bW - aW || (KR[a.k ?? 9] - KR[b.k ?? 9]) || b.atk - a.atk;
-    });
-    return pool[0] ? pool[0].id : null;
-  };
   $('#gLinesBox').innerHTML = lines.length ? lines.map((l) => {
     const skIds = new Set(j.sk.filter((s) => s.line === l.id).map((s) => s.id));
     const ws = lineWeapons(skIds);
-    const lineStar = starAt(ws);
+    let lineStar = bestWeaponFor(ws, lv, gModeVal);
+    if (lineStar) lineStar = lineStar.id;
     return `<div class="card"><div class="line-name">${ELICON[l.el] || ''} ${esc(l.n)}</div><div style="margin-bottom:4px">${badge(l.id)}</div>
       ${j.sk.filter((s) => s.line === l.id).map((s) => {
         const rec = recommendRunes(s);
         const slot1 = Math.ceil(s.max / 2), slot2 = s.max;
-        return `<div class="skl"><span style="vertical-align:middle;margin-right:4px">${aiHtml('skills', s.icon, 28)}</span><b>${esc(s.n)}</b> <span class="pill">${s.active ? 'ใช้งาน' : 'พาสซีฟ'} · Lv${s.max}${s.cd ? ' · CD ' + s.cd + 's' : ''}</span><small>${esc(s.d)}</small>
+        return `<div class="skl sklclick" data-item="sk:${s.id}" title="กดดูรายละเอียดสกิล"><span style="vertical-align:middle;margin-right:4px">${aiHtml('skills', s.icon, 28)}</span><b>${esc(s.n)}</b> <span class="pill">${s.active ? 'ใช้งาน' : 'พาสซีฟ'} · Lv${s.max}${s.cd ? ' · CD ' + s.cd + 's' : ''}</span><small>${esc(s.d)}</small>
           <small style="display:block;margin-top:4px">🧿 รูนแนะนำ: ${rec.map(runeChipHtml).join(' ')} <span class="hint">(ช่อง 1 เปิด Lv${slot1} · ช่อง 2 เปิด Lv${slot2})</span></small></div>`;
       }).join('')}
       <h3 style="margin:10px 0 4px">อาวุธที่เสริมสายนี้ ${lv ? `<small class="hint">(⭐ = ดีที่สุดที่ Lv ${lv})</small>` : ''}</h3>
@@ -268,14 +287,14 @@ function drawLines() {
   }).join('') : `<div class="card"><span class="hint">อาชีพนี้เป็นอาชีพเริ่มต้น/ฐาน — เลือกอาชีพลูกเพื่อดูสายการเล่น</span></div>`;
 }
 
-/* --- all weapons sorted by level --- */
+/* --- all weapons sorted by level (การ์ดทุกใบ ไฮไลต์เฉพาะอาชีพ) --- */
 function drawWeapons() {
   const onlyWsk = $('#gOnlyWsk').checked, ft = gWt.value, fe = gEl.value;
-  let ws = D.weapons.filter((w) => cur.wts.includes(w.wt)); // เฉพาะอาวุธของอาชีพที่เลือก
+  let ws = D.weapons.slice(); // ทุกใบ — ของอาชีพอื่นเป็นสีเทา
   if (ft) ws = ws.filter((w) => w.wt === ft);
   if (fe) ws = ws.filter((w) => w.el === fe);
   if (onlyWsk) ws = ws.filter((w) => w.wsk && w.wsk.some((b) => b[1] === cur.job.id));
-  ws.sort((a, b) => a.lv - b.lv || (b.atk - a.atk));
+  ws.sort((a, b) => (cur.wts.includes(b.wt) - cur.wts.includes(a.wt)) || a.lv - b.lv || (b.atk - a.atk));
   const lv = +gLv.value;
   const KR = { L: 0, B: 1, C: 2, D: 3 };
   const stars = new Set();
@@ -288,16 +307,23 @@ function drawWeapons() {
     })[0];
     if (pick) stars.add(pick.id);
   }
-  $('#gWeaponsBox').innerHTML = `<p class="hint">⭐ = อาวุธแนะนำที่สวมได้ตอน Lv ${lv} (แยกตามประเภท) · กดการ์ดเพื่อดูแหล่งดรอป</p>` + ws.map((w) => {
-    const wsk = w.wsk && w.wsk.find((b) => b[1] === cur.job.id);
-    let c = wepCard(w, wsk);
-    if (stars.has(w.id)) c = c.replace('<div class="nm"', `<span class="tag r-legend" style="margin-left:6px">⭐ แนะนำ Lv ${lv}</span><div class="nm"`);
-    return c;
-  }).join('') || '<p class="hint">ไม่พบอาวุธตามเงื่อนไข</p>';
+  $('#gWeaponsBox').innerHTML = `<p class="hint">🎨 การ์ดสี = ใช้ได้กับ ${esc(cur.job.n)} · เทา = อาชีพอื่น · ⭐ = แนะนำโหมด${({ farm: 'ฟาร์ม', pvp: 'PvP', boss: 'ล่าบอส' })[gModeVal]} ที่ Lv ${lv} · กดการ์ดเพื่อดูแหล่งดรอป</p><div class="cardgrid">` + ws.map((w) => {
+    const jobOk = cur.wts.includes(w.wt);
+    const star = jobOk && stars.has(w.id);
+    const ic = aiHtml('items', w.id, 46) || `<span style="font-size:1.6rem">${WTICON[w.wt] || '🗡️'}</span>`;
+    return `<div class="wcard ${jobOk ? 'ok' : 'dim'} ${star ? 'star' : ''}" data-item="${w.id}" title="${esc(w.n)} — กดดูแหล่งดรอป">
+      <span class="wlv">Lv ${w.lv}</span>${star ? '<span class="wstar">⭐</span>' : ''}
+      <span class="wic">${ic}</span>
+      <span class="wnm">${esc(w.n)}</span>
+      <span class="wsub">ATK ${w.atk} · ${ELICON[w.el] || ''}</span>
+    </div>`;
+  }).join('') + '</div>' || '<p class="hint">ไม่พบอาวุธตามเงื่อนไข</p>';
 }
 [gWt, gEl].forEach((x) => x.addEventListener('change', drawWeapons));
 $('#gOnlyWsk').addEventListener('change', drawWeapons);
 gLv.addEventListener('input', () => { gLvN.textContent = gLv.value; drawMaps(); drawWeapons(); drawLines(); drawSim(); });
+const gMode = $('#gMode');
+if (gMode) gMode.addEventListener('change', () => { gModeVal = gMode.value; drawWeapons(); drawLines(); drawBuilds(); drawMaps(); drawSim(); });
 
 /* --- farm maps per bracket --- */
 function bestMaps(charLv, weaponEl, count) {
@@ -594,7 +620,24 @@ document.addEventListener('click', (e) => {
 });
 function openModal(id) {
   const B = $('#modalBody');
-  if (id.startsWith('runeS2:')) {
+  if (id.startsWith('sk:')) {
+    const sid = id.slice(3);
+    let sk = null, fromJob = null;
+    for (const j2 of D.jobs) { const f = (j2.sk || []).find((x) => x.id === sid); if (f) { sk = f; fromJob = j2; break; } }
+    if (sk) {
+      const rec = recommendRunes(sk);
+      const wskW = D.weapons.filter((x) => x.wsk && x.wsk.some((b) => b[0] === sid && b[1] === cur.job.id)).sort((a, b) => b.lv - a.lv);
+      $('#modalBody').innerHTML = `<h2>${aiHtml('skills', sk.icon, 44) || ''} ${esc(sk.n)}</h2>
+        <div class="kv">
+          <dt>อาชีพ</dt><dd>${esc(fromJob.n)} · ${sk.active ? 'ใช้งาน' : 'พาสซีฟ'} · เลเวลสูงสุด ${sk.max}${sk.cd ? ' · CD ' + sk.cd + 's' : ''}${sk.sp ? ' · SP ' + sk.sp : ''}</dd>
+          ${sk.el ? `<dt>ธาตุ</dt><dd>${elTag(sk.el)}</dd>` : ''}
+          <dt>รายละเอียด</dt><dd>${esc(sk.d)}</dd>
+          <dt>รูนแนะนำ</dt><dd>${rec.map(runeChipHtml).join(' ')}</dd>
+        </div>
+        <h3 style="margin-top:12px">อาวุธที่เสริมสกิลนี้${wskW.length ? ` (${wskW.length} ชิ้น — กดดูแหล่งดรอป)` : ''}</h3>
+        ${wskW.slice(0, 8).map((x) => wepCard(x, x.wsk.find((b) => b[0] === sid && b[1] === cur.job.id))).join('') || '<p class="hint">ยังไม่มีอาวุธที่เสริมสกิลนี้โดยตรง</p>'}`;
+    }
+  } else if (id.startsWith('runeS2:')) {
     const name = id.slice(7);
     const info = RUNE_INFO[name];
     $('#modalBody').innerHTML = `<h2>🧿 รูน${esc(name)}</h2>
