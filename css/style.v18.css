@@ -74,7 +74,9 @@ main{max-width:1180px;margin:auto;padding:18px 16px 60px}
 .card .skl b{color:var(--tx)}
 .card .skl small{display:block;color:var(--tx2)}
 .wep{display:flex;gap:10px;align-items:flex-start;padding:9px 12px;background:var(--card);border:1px solid var(--line);border-radius:12px;margin-bottom:8px;cursor:pointer}
-.wep:hover{border-color:var(--acc2)}
+.wep.ok{border-left:3px solid var(--acc2)}
+.wep.dim{opacity:.42;filter:grayscale(.85)}
+.wep.dim:hover{opacity:.75;filter:grayscale(.5)}
 .wep .ic{width:44px;height:44px;border-radius:10px;background:var(--bg2);display:flex;align-items:center;justify-content:center;font-size:1.5rem;flex:none;border:1px solid var(--el,#444)}
 .wep .nm b{font-size:.95rem} .wep .nm small{display:block;color:var(--tx2)}
 .wep .drop{margin-top:3px;font-size:.78rem;color:var(--tx2)}

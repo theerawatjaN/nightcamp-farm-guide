@@ -263,15 +263,15 @@ function drawLines() {
 /* --- all weapons sorted by level --- */
 function drawWeapons() {
   const onlyWsk = $('#gOnlyWsk').checked, ft = gWt.value, fe = gEl.value;
-  let ws = D.weapons.filter((w) => cur.wts.includes(w.wt));
+  let ws = D.weapons.slice(); // แสดงการ์ดทั้งหมด — ของอาชีพอื่นจะเป็นสีเทา
   if (ft) ws = ws.filter((w) => w.wt === ft);
   if (fe) ws = ws.filter((w) => w.el === fe);
   if (onlyWsk) ws = ws.filter((w) => w.wsk && w.wsk.some((b) => b[1] === cur.job.id));
-  ws.sort((a, b) => a.lv - b.lv || (b.atk - a.atk));
+  ws.sort((a, b) => (cur.wts.includes(b.wt) - cur.wts.includes(a.wt)) || a.lv - b.lv || (b.atk - a.atk));
   const lv = +gLv.value;
   const KR = { L: 0, B: 1, C: 2, D: 3 };
   const stars = new Set();
-  for (const wt of new Set(ws.map((w) => w.wt))) {
+  for (const wt of cur.wts) {
     const pool = ws.filter((w) => w.wt === wt);
     const usable = pool.filter((w) => w.lv <= lv);
     const pick = (usable.length ? usable : pool).slice().sort((a, b) => {
@@ -280,10 +280,13 @@ function drawWeapons() {
     })[0];
     if (pick) stars.add(pick.id);
   }
-  $('#gWeaponsBox').innerHTML = `<p class="hint">⭐ = อาวุธแนะนำที่สวมได้ตอนนี้ (Lv ${lv}) แยกตามประเภท</p>` + ws.map((w) => {
-    const wsk = w.wsk && w.wsk.find((b) => b[1] === cur.job.id);
-    let c = wepCard(w, wsk);
-    if (stars.has(w.id)) c = c.replace('<div class="nm"', '<span class="tag r-legend" style="margin-left:6px">⭐ แนะนำ Lv ' + lv + '</span><div class="nm"');
+  $('#gWeaponsBox').innerHTML = `<p class="hint">🎨 <span style="color:var(--acc2)">สีปกติ = ใช้ได้กับ ${esc(cur.job.n)}</span> · สีเทา = อาวุธของอาชีพอื่น · ⭐ = แนะนำที่สวมได้ตอน Lv ${lv} (แยกตามประเภท)</p>` + ws.map((w) => {
+    const jobOk = cur.wts.includes(w.wt);
+    const wsk = jobOk && w.wsk && w.wsk.find((b) => b[1] === cur.job.id);
+    let c = wepCard(w, jobOk ? wsk : null);
+    c = c.replace('class="wep"', `class="wep ${jobOk ? 'ok' : 'dim'}"`);
+    if (jobOk && stars.has(w.id)) c = c.replace('<div class="nm"', `<span class="tag r-legend" style="margin-left:6px">⭐ แนะนำ Lv ${lv}</span><div class="nm"`);
+    if (!jobOk) c = c.replace('<div class="drop"', '<div class="drop"').replace('</div>${cmpBtn(w)}</div>', '</div>${cmpBtn(w)}</div>');
     return c;
   }).join('') || '<p class="hint">ไม่พบอาวุธตามเงื่อนไข</p>';
 }
