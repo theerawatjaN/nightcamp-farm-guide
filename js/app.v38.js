@@ -1361,11 +1361,18 @@ function initComboDelegation() {
   window.__comboDelegation = true;
   document.addEventListener('focusin', (e) => {
     const inp = e.target.closest && e.target.closest('.comboinput');
-    comboCloseAll(); // ปิดอันเก่าก่อน — เปิดได้ทีละอัน
-    if (inp) comboRender(inp.closest('.scombo'), '');
+    if (!inp) { comboCloseAll(); return; }
+    const wrap = inp.closest('.scombo');
+    const panel = wrap.querySelector('.comborow');
+    const wasOpen = !panel.classList.contains('hidden');
+    comboCloseAll(); // ปิดอื่นก่อนเสมอ
+    if (!wasOpen) { try { comboRender(wrap, ''); } catch (err) {} } // กดซ้ำที่อันเดิมที่เปิดอยู่ → ปิด (toggle)
   });
   document.addEventListener('input', (e) => {
-    if (e.target.classList && e.target.classList.contains('comboinput')) comboRender(e.target.closest('.scombo'), e.target.value);
+    if (e.target.classList && e.target.classList.contains('comboinput')) {
+      comboCloseAllExcept(e.target.closest('.scombo')); // พิมพ์ที่ไหน → ปิดอื่นก่อน
+      try { comboRender(e.target.closest('.scombo'), e.target.value); } catch (err) {}
+    }
   });
   document.addEventListener('click', (e) => {
     const it = e.target.closest && e.target.closest('.comboitem');
@@ -1382,10 +1389,6 @@ function initComboDelegation() {
     const row = e.target.closest('.comborow');
     if (row && !e.target.closest('.comboitem')) { comboCloseAll(); return; } // กดพื้นแผงเปล่า → ปิดเลย
     comboCloseAll(); // กดที่อื่น → ปิดทั้งหมด
-  });
-  document.addEventListener('focusin', (e) => {
-    const inp = e.target.closest && e.target.closest('.comboinput');
-    if (inp) { try { comboRender(inp.closest('.scombo'), ''); } catch (err) {} }
   });
   window.addEventListener('scroll', (e) => {
     if (e.target && e.target.classList && e.target.classList.contains('comborow')) return; // เลื่อนในแผงตัวเอง
