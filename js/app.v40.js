@@ -1354,6 +1354,7 @@ function comboPick(item) {
   sel.value = item.dataset.v;
   btn.value = comboLabel(sel);
   comboCloseAll();
+  window.__lastComboPick = Date.now();
   sel.dispatchEvent(new Event('change'));
 }
 function initComboDelegation() {
@@ -1362,6 +1363,8 @@ function initComboDelegation() {
   document.addEventListener('focusin', (e) => {
     const inp = e.target.closest && e.target.closest('.comboinput');
     if (!inp) { comboCloseAll(); return; }
+    // เพิ่งเลือกรายการเสร็จ (ป้องกัน label activation เปิดซ้ำ)
+    if (Date.now() - (window.__lastComboPick || 0) < 150) return;
     const wrap = inp.closest('.scombo');
     const panel = wrap.querySelector('.comborow');
     const wasOpen = !panel.classList.contains('hidden');
