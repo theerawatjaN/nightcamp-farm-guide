@@ -1354,6 +1354,7 @@ function comboPick(item) {
   sel.value = item.dataset.v;
   btn.value = comboLabel(sel);
   comboCloseAll();
+  window.__armedCombo = null; // เคลียร์ armed หลังเลือก — กันเปิดซ้ำเอง
   window.__lastComboPick = Date.now();
   sel.dispatchEvent(new Event('change'));
 }
