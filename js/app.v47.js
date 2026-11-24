@@ -874,6 +874,7 @@ const B = {
   eq: { weapon: '', top: '', pants: '', hat: '', acc: '', robe: '', glasses: '', shield: '' },
   ref: { weapon: 0, top: 0, pants: 0, hat: 0, acc: 0, robe: 0, glasses: 0, shield: 0 },
   slotGrade: {},
+  optSub: {},
   opt: { weapon: [], top: [], pants: [], hat: [], acc: [], robe: [], glasses: [], shield: [] },
   otier: {},
   taint: {},
@@ -958,7 +959,7 @@ function bOptVals(slot) {
     const o = D.opts.find((x) => x.id === id); if (!o) return null;
     const tier = (B.otier[slot + '_' + idx]) ?? 2;
     const [mn, mx] = o.tiers[Math.min(2, tier)];
-    const sub = (B.optSub[slot + '_' + idx]) || (o.subs && o.subs.length ? o.subs[0] : '');
+    const sub = ((B.optSub || {})[slot + '_' + idx]) || (o.subs && o.subs.length ? o.subs[0] : '');
     return { id, effect: OPT_EFFECT[id] || null, val: mx, unit: o.unit, sub };
   }).filter(Boolean);
 }
@@ -994,7 +995,7 @@ function gStatsHtml(slot) {
     const o = D.opts.find((x) => x.id === id); if (!o) return;
     const tier = (B.otier[slot + '_' + idx]) ?? 2;
     const [mn, mx] = o.tiers[Math.min(2, tier)];
-    const sub = (B.optSub[slot + '_' + idx]) || (o.subs && o.subs.length ? o.subs[0] : '');
+    const sub = ((B.optSub || {})[slot + '_' + idx]) || (o.subs && o.subs.length ? o.subs[0] : '');
     lines.push(`${esc(o.label)}${sub ? ' (' + esc(sub) + ')' : ''} +${mx}${o.unit} <small>(${mn}–${mx}${o.unit})</small>`);
   });
   const tid = B.taint[slot];
@@ -1049,7 +1050,7 @@ function bRenderEquip() {
     const optRows = rows.map((id, idx) => {
       const avail = opts.filter((o) => rows.filter((r) => r === o.id).length < 2 || o.id === id);
       const o = D.opts.find((x) => x.id === id);
-      const osub = (B.optSub[slot + '_' + idx]) || (o && o.subs && o.subs.length ? o.subs[0] : '');
+      const osub = (B.optSub && (B.optSub || {})[slot + '_' + idx]) || (o && o.subs && o.subs.length ? o.subs[0] : '');
       return `<div class="eqoptrow">
         <select data-optrow="${slot}" data-idx="${idx}"><option value="">— เลือกออฟ —</option>${avail.map((o2) => `<option value="${o2.id}" ${id === o2.id ? 'selected' : ''}>${esc(o2.label)}</option>`).join('')}</select>
         ${id && o && o.subs.length ? `<select data-optsub="${slot}" data-idx="${idx}">${o.subs.map((s2) => `<option value="${esc(s2)}" ${osub === s2 ? 'selected' : ''}>${esc(s2)}</option>`).join('')}</select>` : ''}
@@ -1081,7 +1082,7 @@ function bRenderEquip() {
   $$('[data-eq]').forEach((s) => s.onchange = () => { B.eq[s.dataset.eq] = s.value; bRenderEquip(); bCompute(); });
   $$('[data-grad]').forEach((s) => s.onchange = () => { B.slotGrade[s.dataset.grad] = +s.value || ''; bRenderEquip(); bCompute(); });
   $$('[data-ref]').forEach((s) => s.onchange = () => { B.ref[s.dataset.ref] = +s.value; bCompute(); gStatsRefresh(); });
-  $$('[data-optrow]').forEach((s) => s.onchange = () => { B.opt[s.dataset.optrow][+s.dataset.idx] = s.value; delete B.optSub[s.dataset.optrow + '_' + s.dataset.idx]; bRenderEquip(); bCompute(); });
+  $$('[data-optrow]').forEach((s) => s.onchange = () => { B.opt[s.dataset.optrow][+s.dataset.idx] = s.value; delete (B.optSub || {})[s.dataset.optrow + '_' + s.dataset.idx]; bRenderEquip(); bCompute(); });
   $$('[data-optsub]').forEach((s) => s.onchange = () => { B.optSub = B.optSub || {}; B.optSub[s.dataset.optsub + '_' + s.dataset.idx] = s.value; bCompute(); gStatsRefresh(); });
   $$('[data-otier]').forEach((s) => s.onchange = () => { B.otier[s.dataset.otier + '_' + s.dataset.idx] = +s.value; bCompute(); gStatsRefresh(); });
   $$('[data-taint]').forEach((s) => s.onchange = () => { B.taint[s.dataset.taint] = s.value; bCompute(); gStatsRefresh(); });
