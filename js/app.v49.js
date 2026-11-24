@@ -1289,7 +1289,7 @@ function bRenderDps(st, magic) {
   const be = buffEffectsBuild();
   const dmgMul = 1 + be.dmg;
   const off = B.dpsOff || new Set();
-  const skills = bPathJobs().flatMap((x) => x.sk).filter((s) => s.active && !off.has(s.id));
+  const skills = bPathJobs().flatMap((x) => x.sk).filter((s) => s.active && (B.skills[s.id] || 0) > 0 && !off.has(s.id)); // เฉพาะสกิลที่อัปแต้มแล้ว
   const rows = [];
   let rotDmg = 0, rotTime = 0;
   for (const s of skills) {
@@ -1320,10 +1320,14 @@ function bRenderDps(st, magic) {
       return `<label class="chip ${on ? 'on' : ''}"><input type="checkbox" data-dpsbuff="${id}" ${on ? 'checked' : ''}>${esc(name)}${b.dmg ? ' <small>+' + Math.round(b.dmg * 100) + '%</small>' : ''}</label>`;
     }).join('')}</div>
     <h4 style="margin:12px 0 4px">✨ สกิลที่อัปมาแล้ว (ติ๊ก = ใส่วงจร)</h4>
-    <div class="chips">${bPathJobs().flatMap((x) => x.sk).filter((s) => s.active && skillTotalPct(s.d)).map((s) => {
-      const on = !off.has(s.id);
-      return `<label class="chip ${on ? 'on' : ''}"><input type="checkbox" data-dpssk="${s.id}" ${on ? 'checked' : ''}>${esc(s.n)}</label>`;
-    }).join('')}</div>
+    <div class="chips">${(() => {
+      const learnable = bPathJobs().flatMap((x) => x.sk).filter((s) => s.active && skillTotalPct(s.d) && (B.skills[s.id] || 0) > 0);
+      if (!learnable.length) return '<span class="hint">ยังไม่ได้อัปสกิล — จัดแต้มสกิลในการ์ด "สกิล" ด้านบนก่อน แล้วจะมาโชว์ที่นี่</span>';
+      return learnable.map((s) => {
+        const on = !off.has(s.id);
+        return `<label class="chip ${on ? 'on' : ''}"><input type="checkbox" data-dpssk="${s.id}" ${on ? 'checked' : ''}>${esc(s.n)} <small>Lv${B.skills[s.id]}</small></label>`;
+      }).join('');
+    })()}</div>
     <table class="src" style="margin-top:10px"><tr><th>สกิล</th><th>ดาเมจรวม/คาสต์</th><th>CD</th><th>DPS</th></tr>
     ${rows.map((r) => `<tr><td>${esc(r.s.n)}</td><td>${Math.round(r.dmgPerCast).toLocaleString()} <small>(${r.t.pct}% ${r.t.type === 'MATK' ? 'MATK' : 'ATK'}${r.t.hits > 1 ? ' ×' + r.t.hits + ' ครั้ง' : ''})</small></td><td>${r.period.toFixed(1)}s</td><td><b>${Math.round(r.dps).toLocaleString()}</b></td></tr>`).join('')}
     <tr><th>รวมวงจร (ทุกสกิลใช้ครบ 1 รอบ)</th><td colspan="2">${rotTime.toFixed(1)} วินาที</td><td><b>${Math.round(rotDps).toLocaleString()}</b></td></tr>
