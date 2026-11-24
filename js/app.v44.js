@@ -64,7 +64,7 @@ function showPage(p) {
   $$('#tabs button').forEach((b) => b.classList.toggle('on', b.dataset.page === p));
   location.hash = p;
 }
-$('#topMeta').textContent = 'ข้อมูล: SS2 · v0.3';
+$('#topMeta').textContent = 'ข้อมูล: SS2 · v0.4';
 
 /* ════════════════════════ PAGE 1 · คู่มืออาชีพ ════════════════════════ */
 const gJob = $('#gJob'), gLv = $('#gLv'), gLvN = $('#gLvN');
@@ -1359,6 +1359,19 @@ function comboPick(item) {
   sel.dispatchEvent(new Event('change'));
 }
 function initComboDelegation() {
+  /* แถบแสดง error จริงบนหน้าเว็บ (ไว้รายงานบั๊ก) */
+  window.addEventListener('error', (e) => {
+    let bar = document.getElementById('errbar');
+    if (!bar) { bar = document.createElement('div'); bar.id = 'errbar'; document.body.appendChild(bar); }
+    bar.textContent = '⚠ JS ERROR: ' + (e.message || '') + ' (line ' + e.lineno + ')';
+    bar.style.display = 'block';
+  });
+  window.addEventListener('unhandledrejection', (e) => {
+    let bar = document.getElementById('errbar');
+    if (!bar) { bar = document.createElement('div'); bar.id = 'errbar'; document.body.appendChild(bar); }
+    bar.textContent = '⚠ PROMISE ERROR: ' + (e.reason && e.reason.message ? e.reason.message : e.reason);
+    bar.style.display = 'block';
+  });
   if (window.__comboDelegation) return;
   window.__comboDelegation = true;
   /* เปิดแผงได้เฉพาะเมื่อ "กดเอง" (armed) — focusin จากการ rebuild/restore จะไม่เปิดแผง */
