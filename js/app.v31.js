@@ -1338,6 +1338,65 @@ function bInit() {
 
 /* ---------- searchable dropdowns (combo) สำหรับ select ทุกตัว ---------- */
 const snorm = (s) => String(s || '').toLowerCase();
+function comboLabel(sel) {
+  const o = sel.selectedOptions[0];
+  if (!o) return '';
+  let g = '';
+  for (const ch of sel.children) { if (ch.tagName === 'OPTGROUP' && Array.from(ch.children).includes(o)) { g = ch.label || ''; break; } }
+  return (g ? g + ' › ' : '') + o.textContent.trim();
+}
+function comboRender(wrap, q) {
+  const sel = wrap.querySelector('select');
+  const panel = wrap.querySelector('.comborow');
+  if (!sel || !panel) return;
+  const f = Array.from(sel.options).filter((o) => !snorm(q) || snorm(o.textContent).includes(snorm(q)));
+  panel.innerHTML = f.slice(0, 80).map((o) => `<div class="comboitem ${o.selected ? 'cur' : ''}" data-v="${o.value}">${esc(o.textContent.trim())}</div>`).join('') +
+    (f.length > 80 ? `<div class="hint" style="padding:4px 8px">…พิมพ์เพิ่มเพื่อกรอง (ทั้งหมด ${f.length})</div>` : '') || '<div class="hint" style="padding:4px 8px">ไม่พบ</div>';
+  const r = wrap.getBoundingClientRect();
+  const below = window.innerHeight - r.bottom;
+  panel.classList.toggle('up', below < 320 && r.top > 320);
+  panel.classList.remove('hidden');
+}
+function comboCloseAll() {
+  document.querySelectorAll('.scombo').forEach((wrap) => {
+    wrap.querySelector('.comborow').classList.add('hidden');
+    const sel = wrap.querySelector('select');
+    const btn = wrap.querySelector('.comboinput');
+    if (btn) btn.value = comboLabel(sel);
+  });
+}
+function comboPick(item) {
+  const wrap = item.closest('.scombo');
+  const sel = wrap.querySelector('select');
+  const btn = wrap.querySelector('.comboinput');
+  sel.value = item.dataset.v;
+  btn.value = comboLabel(sel);
+  comboCloseAll();
+  sel.dispatchEvent(new Event('change'));
+}
+function initComboDelegation() {
+  if (window.__comboDelegation) return;
+  window.__comboDelegation = true;
+  document.addEventListener('focusin', (e) => {
+    const inp = e.target.closest && e.target.closest('.comboinput');
+    if (inp) comboRender(inp.closest('.scombo'), '');
+    else comboCloseAll();
+  });
+  document.addEventListener('input', (e) => {
+    if (e.target.classList && e.target.classList.contains('comboinput')) comboRender(e.target.closest('.scombo'), e.target.value);
+  });
+  document.addEventListener('click', (e) => {
+    const it = e.target.closest && e.target.closest('.comboitem');
+    if (it) { comboPick(it); return; }
+    if (!(e.target.closest && e.target.closest('.scombo'))) comboCloseAll();
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && e.target.classList && e.target.classList.contains('comboinput')) {
+      const first = e.target.closest('.scombo').querySelector('.comboitem');
+      if (first) { comboPick(first); e.preventDefault(); }
+    }
+  });
+}
 function searchifySelect(sel) {
   if (sel._sf) return;
   sel._sf = true;
@@ -1345,60 +1404,21 @@ function searchifySelect(sel) {
   const wrap = document.createElement('span');
   wrap.className = 'scombo';
   sel.parentNode.insertBefore(wrap, sel);
+  wrap.appendChild(sel); // ย้าย select เข้าไปใน combo เพื่อให้หาได้ง่าย
   const btn = document.createElement('input');
-  btn.type = 'text'; btn.className = 'comboinput'; btn.readOnly = false;
-  const label = () => (sel.selectedOptions[0] ? (sel.selectedOptions[0]._gp ? sel.selectedOptions[0]._gp + ' › ' : '') + sel.selectedOptions[0].textContent.trim() : '');
-  btn.value = label();
+  btn.type = 'text'; btn.className = 'comboinput'; btn.placeholder = '🔍 ค้นหา…'; btn.autocomplete = 'off'; btn.setAttribute('autocomplete', 'off');
   const panel = document.createElement('div');
   panel.className = 'comborow hidden';
   wrap.appendChild(btn); wrap.appendChild(panel);
-  const groups = new Map();
-  Array.from(sel.children).forEach((ch) => {
-    if (ch.tagName === 'OPTGROUP') Array.from(ch.children).forEach((o) => groups.set(o, ch.label || ''));
-  });
-  const items = Array.from(sel.options);
-  items.forEach((o) => { o._gp = groups.get(o) || ''; });
-  const openPanel = () => {
-    const r = wrap.getBoundingClientRect();
-    const below = window.innerHeight - r.bottom;
-    panel.classList.toggle('up', below < 300 && r.top > 300);
-    panel.classList.remove('hidden');
-  };
-  const render = (q) => {
-    const f = items.filter((o) => !snorm(q) || snorm(o.textContent).includes(snorm(q)) || snorm(o._gp).includes(snorm(q)));
-    panel.innerHTML = f.slice(0, 80).map((o) => `<div class="comboitem ${o.selected ? 'cur' : ''}" data-v="${o.value}">${o._gp ? '<small>' + esc(o._gp) + ' ›</small> ' : ''}${esc(o.textContent.trim())}</div>`).join('') +
-      (f.length > 80 ? `<div class="hint" style="padding:4px 8px">…พิมพ์เพิ่มเพื่อกรอง (ทั้งหมด ${f.length})</div>` : '') || '<div class="hint" style="padding:4px 8px">ไม่พบ</div>';
-    openPanel();
-  };
-  btn.addEventListener('focus', () => { btn.value = ''; render(''); });
-  btn.addEventListener('input', () => render(btn.value));
-  btn.addEventListener('keydown', (e) => { if (e.key === 'Enter') { const first = panel.querySelector('.comboitem'); if (first) first.click(); e.preventDefault(); } });
-  const pick = (it) => {
-    sel.value = it.dataset.v;
-    btn.value = it.textContent.trim();
-    panel.classList.add('hidden');
-    btn.blur();
-    sel.dispatchEvent(new Event('change'));
-    panel.classList.add('hidden');
-  };
-  panel.addEventListener('mousedown', (e) => {
-    const it = e.target.closest('.comboitem'); if (!it) return;
-    e.preventDefault();
-    pick(it);
-  });
-  panel.addEventListener('click', (e) => {
-    const it = e.target.closest('.comboitem'); if (!it) return;
-    if (sel.value === it.dataset.v) return;
-    pick(it);
-  });
-  document.addEventListener('click', (e) => { if (!wrap.contains(e.target)) { panel.classList.add('hidden'); if (btn.value.trim() === '') btn.value = label(); } });
-  document.addEventListener('focusin', (e) => { if (!wrap.contains(e.target)) { panel.classList.add('hidden'); if (btn.value.trim() === '' || btn.value.trim() !== label()) btn.value = label(); } });
+  btn.value = comboLabel(sel);
 }
 function searchifyAll(root) {
   (root || document).querySelectorAll('select:not([data-sf])').forEach((sel) => { sel.dataset.sf = 1; searchifySelect(sel); });
 }
 const searchObserver = new MutationObserver(() => searchifyAll());
 searchObserver.observe(document.body, { childList: true, subtree: true });
+initComboDelegation();
+
 
 /* ════════════════════════ PAGE 3 · วางแผนฟาร์ม ════════════════════════ */
 const pJob = $('#pJob'), pLv = $('#pLv'), pLvN = $('#pLvN'), pSize = $('#pSize'), pGoal = $('#pGoal'), pMembers = $('#pMembers'), pBuffs = $('#pBuffs'), pOut = $('#pOut');
