@@ -715,6 +715,7 @@ function openModal(id) {
 
 /* ════════════════════════ PAGE 2.5 · ตีบวก & ออฟ ════════════════════════ */
 let forgeTab = 'howto';
+let forgeOptPool = '', forgeCraftType = '';
 const forgeQ = $('#forgeQ'), forgeFilters = $('#forgeFilters'), forgeBox = $('#forgeBox');
 $('#forgeTabs').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; forgeTab = b.dataset.tab; $$('#forgeTabs button').forEach((x) => x.classList.toggle('on', x === b)); renderForge(); });
 forgeQ.addEventListener('input', renderForge);
@@ -811,9 +812,9 @@ function renderForge() {
     }
     forgeBox.innerHTML = html;
   } else if (forgeTab === 'opts') {
-    forgeFilters.innerHTML = `<label class="sel"><span>สวมได้ที่</span><select id="foPool"><option value="">ทั้งหมด</option><option>อาวุธ</option><option>ชุดบน-ล่าง</option><option>หมวก</option><option>เครื่องประดับ</option></select></label>`;
-    $('#foPool').onchange = renderForge;
-    const pool = $('#foPool').value;
+    forgeFilters.innerHTML = `<label class="sel"><span>สวมได้ที่</span><select id="foPool"><option value="">ทั้งหมด</option>${['อาวุธ', 'ชุดบน-ล่าง', 'หมวก', 'เครื่องประดับ'].map((p) => `<option value="${p}" ${forgeOptPool === p ? 'selected' : ''}>${p}</option>`).join('')}</select></label>`;
+    $('#foPool').onchange = (e) => { forgeOptPool = e.target.value; renderForge(); };
+    const pool = forgeOptPool;
     const list = D.opts.filter((o) => (!pool || o.on.includes(pool)) && matches(q, o.label, o.id, o.subs.join(' ')));
     const GROUP_TH = { atk: 'โจมตี', skill: 'สกิล', def: 'ป้องกัน', special: 'พิเศษ (ดรอปเท่านั้น)' };
     const byGroup = {};
@@ -835,9 +836,9 @@ function renderForge() {
       <table class="src"><tr><th>คุณสมบัติ</th><th>ข้อดี</th><th>ข้อเสีย</th></tr>
       ${list.map((t2) => `<tr><td><b>☾ ${esc(t2.n)}</b></td><td>${esc(t2.up)}</td><td style="color:var(--red)">${esc(t2.dn)}</td></tr>`).join('')}</table>`;
   } else if (forgeTab === 'craft') {
-    forgeFilters.innerHTML = `<label class="sel"><span>ประเภทอาวุธ</span><select id="fcType"><option value="">ทั้งหมด</option>${D.craft.map((c) => `<option value="${c.t}">${esc(c.n)}</option>`).join('')}</select></label>`;
-    $('#fcType').onchange = renderForge;
-    const tsel = $('#fcType').value;
+    forgeFilters.innerHTML = `<label class="sel"><span>ประเภทอาวุธ</span><select id="fcType"><option value="">ทั้งหมด</option>${D.craft.map((c) => `<option value="${c.t}" ${forgeCraftType === c.t ? 'selected' : ''}>${esc(c.n)}</option>`).join('')}</select></label>`;
+    $('#fcType').onchange = (e) => { forgeCraftType = e.target.value; renderForge(); };
+    const tsel = forgeCraftType;
     const list = D.craft.filter((c) => (!tsel || c.t === tsel) && matches(q, c.n, c.list.map((x) => x.n).join(' ')));
     forgeBox.innerHTML = `<p class="card hint" style="margin-bottom:12px">คราฟต์ที่<b>เตาหลอม</b>ด้วยใบสั่งงาน — ใช้วัสดุจากการฟาร์ม/เหมือง/สกิลชีวิต · แสดงคุณสมบัติครบของไอเทมที่คราฟได้ · กด ⚖️ ที่รายการเพื่อเปรียบเทียบกับดาบบอส/ดาบดรอปตัวอื่น</p>` +
       list.map((c) => `<div class="card setc"><h3>${esc(c.n)}</h3><table class="src"><tr><th>ไอเทม</th><th>เกรด</th><th>เหรียญ</th><th>วัสดุ</th><th>ATK</th><th>ธาตุ</th><th>คุณสมบัติ</th></tr>
