@@ -174,7 +174,7 @@ const refine = {
     return [kind, { n: rep.n, item: rep.item, grades: steps }];
   })),
 };
-const smeltList = Object.entries(smeltGoods).map(([id, g]) => ({ id, n: t(g.n), price: g.price, d: t(g.d) }));
+const smeltList = Object.entries(smeltGoods).map(([id, g]) => ({ id, n: t(g.n), price: g.price, d: t(g.d), from: g.from || '' }));
 const craft = W.sys.craft.map((c) => ({
   t: c.t, n: t(c.n),
   list: c.list.filter((x) => x.mats).map((x) => ({
@@ -195,5 +195,5 @@ const data = {
 
 const out = 'window.NC_DATA = ' + JSON.stringify(data) + ';';
 fs.mkdirSync(path.join(root, 'js'), { recursive: true });
-fs.writeFileSync(path.join(root, 'js/data.v15.js'), out);
+fs.writeFileSync(path.join(root, 'js/data.v17.js'), out);
 console.log('written js/data.js', (out.length / 1e6).toFixed(2), 'MB ·', weapons.length, 'weapons ·', monsters.length, 'monsters ·', maps.length, 'maps ·', sets.length, 'sets ·', runes.length, 'runes');

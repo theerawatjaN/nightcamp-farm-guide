@@ -167,6 +167,45 @@ function drawBuilds() {
 }
 const CTRL_DOC = /ผลัก|มึน|แช่แข็ง|ตรึง|ช้าลง|ดึง|กับดัก|เงียบ|ตาบอด|หลับ|เย็นเฉียบ|ช็อต/;
 
+/* ── รูนสกิล (จากตารางรูนซีซัน 2 ของวิกิ) ── */
+const RUNE_INFO = {
+  'สายฟ้าแตก': { el: 'ลม', d: 'ร่ายแล้ว 35% สายฟ้าแตกไปตัวข้างๆ · ตีฝูงแรงขึ้น 10/16/25%' },
+  'ไฟลาม': { el: 'ไฟ', d: 'ตัวที่ตายจากสกิลนี้ ไฟลามไปตัวข้างๆ · ตีฝูงแรงขึ้น 12/20/30%' },
+  'ฟรอสต์': { el: 'น้ำ', d: 'ร่ายแล้ว 30% ความเย็นแตกรอบเป้า ช้าลง · ตีฝูงแรงขึ้น 8/12/18%' },
+  'พิษซ้อน': { el: 'พิษ', d: 'ร่ายแล้วพิษซ้อนบนเป้า สูงสุด 5 ชั้น · ตีเป้าเดียวแรงขึ้น 6/10/15%' },
+  'เงาตีซ้ำ': { el: 'เงา', d: 'ร่ายแล้ว 30% เงาตีเป้าซ้ำ · ตีเป้าเดียวแรงขึ้น 6/10/15%' },
+  'กับดัก': { el: 'ดิน', d: 'ร่ายแล้ววางกับดักที่จุดเล็ง (ทุก 5 วิ) · ตีฝูงแรงขึ้น 8/13/20%' },
+  'อุกกาบาตถล่ม': { el: 'ไฟ', d: 'ร่ายแล้ว 10% อุกกาบาตถล่มตกใส่เป้า · ตีฝูงแรงขึ้น 12/20/30%' },
+  'สายฟ้าฟาด': { el: 'ลม', d: 'ร่ายแล้ว 10% สายฟ้าฟาดเป้าและตัวข้างๆ · ตีฝูงแรงขึ้น 12/20/30%' },
+  'วงน้ำแข็ง': { el: 'น้ำ', d: 'ร่ายแล้ว 10% วงน้ำแข็งแตกรอบตัว มอนช้าลง · ตีฝูงแรงขึ้น 12/20/30%' },
+  'หินแหลมพสุธา': { el: 'ดิน', d: 'ร่ายแล้ว 10% หินแหลมพุ่งใต้เป้า · ตีฝูงแรงขึ้น 12/20/30%' },
+  'วงเวทแสงขับมาร': { el: 'ศักดิ์สิทธิ์', d: 'ร่ายแล้ว 10% วงเวทแสงขับมารใต้เป้า · ตีฝูงแรงขึ้น 12/20/30%' },
+  'ดาบพายุหมุน': { el: '', d: 'ร่ายแล้ว 10% ดาบพายุหมุนรอบตัว (ธาตุอาวุธ) · ตีฝูงแรงขึ้น 12/20/30%' },
+  'เจ้าแห่งอสนี': { el: 'ลม', d: 'ร่ายแล้ว 10% ฟ้าผ่าหลายลูกรอบเป้า · ตีฝูงแรงขึ้น 12/20/30%' },
+  'อุกกาบาตเงา': { el: 'เงา', d: 'ร่ายแล้ว 10% อุกกาบาตเงาตกรอบตัว · ตีฝูงแรงขึ้น 12/20/30%' },
+  'เจาะเกราะ': { el: '', d: 'เจาะเกราะ +15/25/35%' },
+  'เจาะเวท': { el: '', d: 'เจาะเวท +15/25/35%' },
+  'ขยาย': { el: '', d: 'พื้นที่ +30/45/60% ดาเมจ −10% (เทพ −5%)' },
+  'จดจ่อ': { el: '', d: 'พื้นที่ −40% ดาเมจ +25/35/50%' },
+  'เสียงสะท้อน': { el: '', d: 'ร่ายซ้ำเองหลังจากนั้น 0.6 วิ ที่ 30/40/55%' },
+  'เร่ง': { el: '', d: 'คูลดาวน์และดีเลย์ −15% ดาเมจ −10%' },
+  'ค้างอยู่': { el: '', d: 'ทิ้งเขตไว้ 2–4 วิ วิละ 15–25%' },
+  'ระเบิดศพ': { el: '', d: 'ฆ่าแล้วระเบิด 50/75/100% ATK' },
+};
+const RUNE_BY_EL = { fire: 'ไฟลาม', water: 'ฟรอสต์', wind: 'สายฟ้าฟาด', poison: 'พิษซ้อน', shadow: 'เงาตีซ้ำ', holy: 'วงเวทแสงขับมาร', earth: 'หินแหลมพสุธา', undead: 'วงเวทแสงขับมาร', ghost: 'อุกกาบาตเงา', neutral: 'ดาบพายุหมุน' };
+const AOE_RE2 = /รัศมี|เป็นวง|วงกว้าง|รอบตัว|ทั้งแนว|ฝูง|กระจาย|พัด|ฝน|ศัตรูในวง|ทุก (ตัว|ศัตรู)/;
+function recommendRunes(s) {
+  const rec = [];
+  const mainRune = RUNE_BY_EL[s.el] || 'ดาบพายุหมุน';
+  rec.push({ n: mainRune, star: true });
+  if (AOE_RE2.test(s.d)) rec.push({ n: 'ขยาย', star: true });
+  else rec.push({ n: 'จดจ่อ' });
+  if (s.active) rec.push({ n: 'เสียงสะท้อน' });
+  if (/ติดเผา|พิษ|เลือดออก|เย็นเฉียบ/.test(s.d)) rec.push({ n: 'ค้างอยู่' });
+  if (s.type === 'phys' && /เจาะ|ทะลุ/.test(s.d)) rec.push({ n: 'เจาะเกราะ' });
+  return rec.slice(0, 4);
+}
+
 /* --- skill lines + weapons per line --- */
 function lineWeapons(lineSkillIds) {
   return D.weapons
@@ -193,13 +232,30 @@ function drawLines() {
     id === bestBoss ? '<span class="tag r-legend">👑 ล่าบอส</span>' : '',
     id === bestPvp ? '<span class="tag r-legend">⚔️ PvP</span>' : '',
   ].join(' ');
+  const lv = +gLv.value;
+  const starAt = (ws) => {
+    const usable = ws.filter((w) => w.lv <= lv);
+    const pool = (usable.length ? usable : ws).slice();
+    pool.sort((a, b) => {
+      const aW = (a.wsk || []).some((x) => x[1] === cur.job.id) ? 1 : 0, bW = (b.wsk || []).some((x) => x[1] === cur.job.id) ? 1 : 0;
+      const KR = { L: 0, B: 1, C: 2, D: 3 };
+      return bW - aW || (KR[a.k ?? 9] - KR[b.k ?? 9]) || b.atk - a.atk;
+    });
+    return pool[0] ? pool[0].id : null;
+  };
   $('#gLinesBox').innerHTML = lines.length ? lines.map((l) => {
     const skIds = new Set(j.sk.filter((s) => s.line === l.id).map((s) => s.id));
     const ws = lineWeapons(skIds);
+    const lineStar = starAt(ws);
     return `<div class="card"><div class="line-name">${ELICON[l.el] || ''} ${esc(l.n)}</div><div style="margin-bottom:4px">${badge(l.id)}</div>
-      ${j.sk.filter((s) => s.line === l.id).map((s) => `<div class="skl"><span style="vertical-align:middle;margin-right:4px">${aiHtml('skills', s.icon, 28)}</span><b>${esc(s.n)}</b> <span class="pill">${s.active ? 'ใช้งาน' : 'พาสซีฟ'} · Lv${s.max}${s.cd ? ' · CD ' + s.cd + 's' : ''}</span><small>${esc(s.d)}</small></div>`).join('')}
-      <h3 style="margin:10px 0 4px">อาวุธที่เสริมสายนี้</h3>
-      ${ws.length ? ws.slice(0, 6).map((w) => wepCard(w, w.wsk.find((b) => b[1] === j.id && skIds.has(b[0])))).join('') : '<span class="hint">ยังไม่มีอาวุธที่เสริมสายนี้ในข้อมูล</span>'}
+      ${j.sk.filter((s) => s.line === l.id).map((s) => {
+        const rec = recommendRunes(s);
+        const slot1 = Math.ceil(s.max / 2), slot2 = s.max;
+        return `<div class="skl"><span style="vertical-align:middle;margin-right:4px">${aiHtml('skills', s.icon, 28)}</span><b>${esc(s.n)}</b> <span class="pill">${s.active ? 'ใช้งาน' : 'พาสซีฟ'} · Lv${s.max}${s.cd ? ' · CD ' + s.cd + 's' : ''}</span><small>${esc(s.d)}</small>
+          <small style="display:block;margin-top:4px">🧿 รูนแนะนำ: ${rec.map((r2) => `<span class="pill" title="${esc(RUNE_INFO[r2.n]?.d || '')}" style="${r2.star ? 'border-color:var(--acc);color:var(--acc)' : ''}">${r2.star ? '⭐ ' : ''}รูน${r2.n}</span>`).join(' ')} <span class="hint">(ช่อง 1 เปิด Lv${slot1} · ช่อง 2 เปิด Lv${slot2})</span></small></div>`;
+      }).join('')}
+      <h3 style="margin:10px 0 4px">อาวุธที่เสริมสายนี้ ${lv ? `<small class="hint">(⭐ = ดีที่สุดที่ Lv ${lv})</small>` : ''}</h3>
+      ${ws.length ? ws.slice(0, 6).map((w) => { const c = wepCard(w, w.wsk.find((b) => b[1] === j.id && skIds.has(b[0]))); return w.id === lineStar ? c.replace('<div class="nm"', '<span class="tag r-legend" style="margin-left:6px">⭐ แนะนำ Lv ' + lv + '</span><div class="nm"') : c; }).join('') : '<span class="hint">ยังไม่มีอาวุธที่เสริมสายนี้ในข้อมูล</span>'}
     </div>`;
   }).join('') : `<div class="card"><span class="hint">อาชีพนี้เป็นอาชีพเริ่มต้น/ฐาน — เลือกอาชีพลูกเพื่อดูสายการเล่น</span></div>`;
 }
@@ -212,13 +268,28 @@ function drawWeapons() {
   if (fe) ws = ws.filter((w) => w.el === fe);
   if (onlyWsk) ws = ws.filter((w) => w.wsk && w.wsk.some((b) => b[1] === cur.job.id));
   ws.sort((a, b) => a.lv - b.lv || (b.atk - a.atk));
-  $('#gWeaponsBox').innerHTML = ws.map((w) => {
+  const lv = +gLv.value;
+  const KR = { L: 0, B: 1, C: 2, D: 3 };
+  const stars = new Set();
+  for (const wt of new Set(ws.map((w) => w.wt))) {
+    const pool = ws.filter((w) => w.wt === wt);
+    const usable = pool.filter((w) => w.lv <= lv);
+    const pick = (usable.length ? usable : pool).slice().sort((a, b) => {
+      const aW = (a.wsk || []).some((x) => x[1] === cur.job.id) ? 1 : 0, bW = (b.wsk || []).some((x) => x[1] === cur.job.id) ? 1 : 0;
+      return bW - aW || (KR[a.k ?? 9] - KR[b.k ?? 9]) || b.atk - a.atk;
+    })[0];
+    if (pick) stars.add(pick.id);
+  }
+  $('#gWeaponsBox').innerHTML = `<p class="hint">⭐ = อาวุธแนะนำที่สวมได้ตอนนี้ (Lv ${lv}) แยกตามประเภท</p>` + ws.map((w) => {
     const wsk = w.wsk && w.wsk.find((b) => b[1] === cur.job.id);
-    return wepCard(w, wsk);
+    let c = wepCard(w, wsk);
+    if (stars.has(w.id)) c = c.replace('<div class="nm"', '<span class="tag r-legend" style="margin-left:6px">⭐ แนะนำ Lv ' + lv + '</span><div class="nm"');
+    return c;
   }).join('') || '<p class="hint">ไม่พบอาวุธตามเงื่อนไข</p>';
 }
 [gWt, gEl].forEach((x) => x.addEventListener('change', drawWeapons));
 $('#gOnlyWsk').addEventListener('change', drawWeapons);
+gLv.addEventListener('input', () => { gLvN.textContent = gLv.value; drawMaps(); drawWeapons(); drawLines(); drawSim(); });
 
 /* --- farm maps per bracket --- */
 function bestMaps(charLv, weaponEl, count) {
@@ -284,7 +355,6 @@ function drawSimSelectors() {
 }
 $('#simLine').addEventListener('change', () => { drawSimSelectors(); drawMaps(); drawSim(); });
 $('#simWeapon').addEventListener('change', drawSim);
-gLv.addEventListener('input', () => { gLvN.textContent = gLv.value; drawMaps(); drawSim(); });
 
 function drawSim() {
   const j = cur.job, lv = +gLv.value;
@@ -583,6 +653,7 @@ function renderForge() {
     const rates = D.refine.rates, cost = D.refine.cost;
     let html = `<div class="card" style="margin-bottom:12px"><b>กฎการตีบวก</b> (ซีซัน 2)
       <div class="bonus" style="margin-top:6px">ป๋าหมูหริ่งตีบวกอาวุธ/เกราะ/หมวก/เครื่องประดับจาก +1 ถึง +10 · อาวุธแต่ละเลเวล ATK +4% (+40% ที่ +10) · เกราะ/หมวกได้ DEF +1 ทุกสองเลเวล และ HP +0.5% ต่อเลเวล · ไม่มีขั้นการันตีแล้ว พลาดเสียแค่ค่าตี · <b>+9/+10</b> พลาดแล้วขั้นลดลง 1 และมีโอกาส <b>${D.refine.brk['9']}% / ${D.refine.brk['10']}%</b> ที่ชิ้นจะแตก (เปิดใช้<b>หินกันแตก</b> — หลอมจากแกนดาว ×1 + แท่งดาว ×2 — เพื่อกันแตก) · อาวุธเรืองแสง: +5 ประกาย, +7 น้ำเงิน, +8 ม่วง, +9 ส้มทอง, +10 สายรุ้ง</div></div>`;
+    if (q) html += `<p class="hint">ค้นหา "${esc(q)}" — แสดงเฉพาะวัสดุที่ตรง</p>`;
     html += `<h3>โอกาสสำเร็จ (%)</h3><table class="src"><tr><th>ขั้น</th><th>${GRADE_TH.join('</th><th>')}</th></tr>`;
     for (let s = 1; s <= 10; s++) html += `<tr><td><b>+${s}</b></td>${[1, 2, 3, 4].map((g) => `<td>${rates[g][s]}%</td>`).join('')}</tr>`;
     html += '</table>';
@@ -591,12 +662,35 @@ function renderForge() {
     html += '</table>';
     html += `<h3 style="margin-top:14px">วัสดุที่ใช้ตี (ต่อครั้ง)</h3>`;
     for (const [kind, k] of Object.entries(D.refine.kinds)) {
+      const mats = [...new Set(k.grades.flat(2).map((m) => m.mat))];
+      if (q && !matches(q, k.n, k.item, mats.join(' '))) continue;
       html += `<div class="card setc" style="margin-bottom:10px"><h3>${esc(k.n)}</h3><table class="src"><tr><th>เกรด</th><th>ขั้น +1 → +10 (วัสดุต่อครั้ง)</th></tr>`;
       k.grades.forEach((grade, gi2) => {
         const brief = grade.map((step, i2) => '+(' + (i2 + 1) + '): ' + step.map((m) => m.mat + '×' + m.q).join(' + ')).join(' · ');
         html += `<tr><td>${GRADE_TH[gi2]}</td><td>${esc(brief)}</td></tr>`;
       });
       html += `</table></div>`;
+    }
+    // แหล่งที่ได้ของแร่/วัสดุตีบวก (ขุดเหมือง · ตัดไม้ · มอน)
+    const srcs = D.smelt.filter((s2) => s2.from && matches(q, s2.n, s2.from)).map((s2) => {
+      const oreMat = D.materials.find((x) => x.id === s2.from);
+      const fromText = oreMat ? (oreMat.from || '') : '';
+      const droppers = [];
+      for (const m of D.monsters) {
+        const d = (m.mats || []).find((x) => x[0] === s2.from);
+        if (d) droppers.push({ m, chance: d[1] });
+      }
+      return { good: s2, oreN: oreMat ? oreMat.n : s2.from, fromText, droppers: droppers.sort((a, b) => a.m.lv - b.m.lv).slice(0, 4) };
+    });
+    if (srcs.length) {
+      html += `<h3 style="margin-top:14px">📍 แหล่งที่ได้แร่/วัสดุตีบวก (ขุดเหมือง · ตัดไม้ · มอน)</h3>
+        <table class="src"><tr><th>วัสดุหลอม</th><th>แร่ดิบ</th><th>แหล่งที่ได้</th></tr>`;
+      for (const { good, oreN, fromText, droppers } of srcs) {
+        const monHtml = droppers.length ? '<br>' + droppers.map((d) => `🎮 ${esc(d.m.n)} (Lv${d.m.lv}) · ${pct(d.chance)} · <small>${d.m.maps.map((mid) => esc(MAP[mid]?.n || mid)).join('/')}</small>`).join('<br>') : '';
+        html += `<tr><td><b>${esc(good.n)}</b></td><td>${esc(oreN)}</td><td>${fromText ? esc(fromText) : '–'}${monHtml}</td></tr>`;
+      }
+      html += `</table>
+      <p class="note">หมายเหตุ: แท่งดาว = หลอมจาก "แร่ดาวตก" ที่ขุดได้จากเหมืองอุกกาบาต (Meteor Shaft F1–7) และดันเจี้ยน Lv85+ · แกนดาว (ทำหินกันแตก) ได้จากดันเจี้ยนลึก/บอสตามข้อมูลวิกิ</p>`;
     }
     forgeBox.innerHTML = html;
   } else if (forgeTab === 'opts') {
