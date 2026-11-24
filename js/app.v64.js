@@ -252,6 +252,13 @@ const RUNE_INFO = {
   'สายฟ้าฟาด': { el: 'ลม', d: 'สกิลโจมตี: ร่ายแล้ว 10% สายฟ้าฟาดเป้าและตัวข้างๆ · ตีฝูงแรงขึ้น 12/20/30%' },
 };
 const RUNE_BY_EL = { fire: 'ไฟลาม', water: 'ฟรอสต์', wind: 'สายฟ้าฟาด', poison: 'พิษซ้อน', shadow: 'เงาตีซ้ำ', holy: 'วงเวทแสงขับมาร', earth: 'หินแหลมพสุธา', undead: 'วงเวทแสงขับมาร', ghost: 'อุกกาบาตเงา', neutral: 'ดาบพายุหมุน' };
+/* รูนเวท 8 ตัว — ได้จากการร่ายสกิลเวท (Base Lv 70+) โอกาส ~0.002%/การร่าย · ธาตุสกิลกำหนดรูน (s2.runes.spell.of) */
+const SPELL_RUNE_EL = { spmeteor: 'ไฟ', spthunder: 'ลม', splord: 'ลม', spfrost: 'น้ำ', spquake: 'ดิน', spmagnus: 'ศักดิ์สิทธิ์/อันเดด', spwhirl: 'ธาตุอาวุธ/พิษ', spshadow: 'เงา' };
+const SPELL_RUNE_INFO = {
+  spmeteor: 'อุกกาบาตถล่ม', spthunder: 'สายฟ้าฟาด', spfrost: 'วงน้ำแข็ง', spquake: 'หินแหลมพสุธา',
+  spmagnus: 'วงเวทแสงขับมาร', spwhirl: 'ดาบพายุหมุน', splord: 'เจ้าแห่งอสนี', spshadow: 'อุกกาบาตเงา',
+};
+const GUN_RUNE_DROPPER = { scorpion: 0.0000252, spit_scorpion: 0.0000201 }; // รูนปืน 7 ตัว ดรอปจากแมงป่องเหล่านี้
 const AOE_RE2 = /รัศมี|เป็นวง|วงกว้าง|รอบตัว|ทั้งแนว|ฝูง|กระจาย|พัด|ฝน|ศัตรูในวง|ทุก (ตัว|ศัตรู)/;
 const RUNE_ALIAS = { 'แยก': 'split', 'ขยาย': 'wide', 'จดจ่อ': 'focus', 'เสียงสะท้อน': 'echo', 'เร่ง': 'haste', 'ค้างอยู่': 'linger', 'ระเบิดศพ': 'corpse', 'เจาะเกราะ': 'apierce', 'เจาะเวท': 'wpierce', 'ดึง': 'pull', 'เด้ง': 'bounce', 'ดาบพายุหมุน': 'spwhirl', 'สายฟ้าฟาด': 'spthunder', 'วงเวทแสงขับมาร': 'spmagnus', 'หินแหลมพสุธา': 'spquake', 'อุกกาบาตถล่ม': 'spmeteor', 'เจ้าแห่งอสนี': 'splord', 'อุกกาบาตเงา': 'spshadow', 'ฟรอสต์': 'frostbite', 'ไฟลาม': 'wildfire', 'พิษซ้อน': 'venom', 'เงาตีซ้ำ': 'shade', 'สายฟ้าแตก': 'arc', 'กับดัก': 'trap' };
 /* ── หัวข้อรูน (ในคลังไอเทม แท็บ "รูน / การ์ด"): หลอม · รวมรูน · ติดดาวแนะนำ ── */
@@ -259,13 +266,13 @@ function runeTopicHtml() {
   const s2Table = `<div class="card"><h3>รูนซีซัน 2 — ผลตามขั้น I / II / III</h3><table class="src"><tr><th>รูน</th><th>ธาตุ</th><th>ผล (ขั้น I → II → III)</th></tr>${
     Object.entries(RUNE_INFO).map(([n, i]) => `<tr><td><b>รูน${esc(n)}</b></td><td>${i.el || '–'}</td><td>${esc(i.d)}</td></tr>`).join('')
   }</table></div>`;
-  const craft = `<div class="card"><h3>หลอม & รวมรูน — ที่ "ป๋าหมูหริ่ง" (Papa Muri)</h3>
-    <table class="src"><tr><th>ขั้น</th><th>วิธีได้มา</th><th>มูลค่าขาย (เหรียญ)</th></tr>
-      <tr><td><b>รูนขั้น I</b></td><td>ดรอปจากมอน / ซื้อในตลาด</td><td>19</td></tr>
-      <tr><td><b>รูนขั้น II</b></td><td>รวม รูน I × <b>3</b> ที่ป๋าหมูหริ่ง</td><td>68</td></tr>
-      <tr><td><b>รูนขั้น III</b></td><td>รวม รูน II × <b>3</b> ที่ป๋าหมูหริ่ง</td><td>225</td></tr></table>
-    <div class="bonus" style="margin-top:8px"><b>กติกาการรวม:</b> นำรูนชนิดเดียวกันขั้นเดียวกัน <b>3 อัน</b> ไปหาป๋าหมูหริ่ง เพื่อรวมเป็นขั้นถัดไป (I → II → III) — ผลแรงขึ้นและโทษเบาลงตามขั้น เช่น รูนแยก: I = ลูกยิง +1 ดาเมจ −30% · II = ลูกยิง +2 ดาเมจ −30% · III = ลูกยิง +2 ดาเมจ −20% · วัสดุรูนมีทั้งหมด <b>47 ชนิด × 3 ขั้น = 141 ชิ้น</b></div>
-    <div class="bonus" style="margin-top:6px"><b>วิธีติดรูน:</b> เปิดหน้า<b>สกิล (K)</b> → เลือกสกิลที่มีช่องรูน (ช่อง 1 เปิดตอนสกิลถึงครึ่งหนึ่งของเลเวลสูงสุด · ช่อง 2 ตอนถึงเลเวลสูงสุด · ตีปกติเปิดที่ Lv 40 และ 70) → ใส่รูนตามอันดับแนะนำ · <b>ถอดรูนออกฟรี</b> ทดลองได้เสมอ · ทุกอย่างที่รูนเพิ่มรวมกันได้สูงสุด <b>+50%</b> ต่อการโจมตีหนึ่งครั้ง</div></div>`;
+  const craft = `<div class="card"><h3>วิธีได้รูน (สูตรจริงจากข้อมูลเกม)</h3>
+    <table class="src"><tr><th>กลุ่มรูน</th><th>วิธีได้</th><th>โอกาส</th></tr>
+      <tr><td><b>รูนสกิลทั่วไป</b> (34 ตัว)</td><td>ฆ่ามอน — มอนธรรมดา · เอลิท · บอส · มอนเนื้อเรื่อง</td><td>0.01% / 0.25% / 4% / 5% ต่อตัว</td></tr>
+      <tr><td><b>รูนเวท</b> (8 ตัว: ดาบพายุหมุน · อุกกาบาตถล่ม · สายฟ้าฟาด · วงน้ำแข็ง · หินแหลมพสุธา · วงเวทแสงขับมาร · เจ้าแห่งอสนี · อุกกาบาตเงา)</td><td><b>ร่ายสกิลเวท</b> (ต้อง Base Lv 70+) — <b>ธาตุของสกิลที่ร่ายกำหนดรูนที่ได้</b>: ไฟ→อุกกาบาตถล่ม · ลม→สายฟ้าฟาด หรือ เจ้าแห่งอสนี · น้ำ→วงน้ำแข็ง · ดิน→หินแหลมพสุธา · ศักดิ์สิทธิ์/อันเดด→วงเวทแสงขับมาร · เงา→อุกกาบาตเงา · ธาตุอาวุธ/พิษ→ดาบพายุหมุน</td><td>~0.002% ต่อการร่าย</td></tr>
+      <tr><td><b>รูนปืน</b> (7 ตัว: ระเบิดมือ · กระสุนชิ่ง · หัวกระสุนระเบิด · ดวลปืน · ลูกปรายเพลิง · สองลำกล้อง · แรงถีบ)</td><td>ฆ่า<b>แข้งแมงป่อง / แข้งแมงป่องพ่นน้ำ</b> เท่านั้น</td><td>~0.0025% ต่อตัว</td></tr></table>
+    <div class="bonus" style="margin-top:8px"><b>หลอมรวมขั้นที่ป๋าหมูหริ่ง (Papa Muri):</b> นำรูนชนิดเดียวกันขั้นเดียวกัน <b>3 อัน</b> → รวมเป็นขั้นถัดไป (I → II → III) — ผลแรงขึ้นและโทษเบาลงตามขั้น เช่น รูนแยก: I = ลูกยิง +1 ดาเมจ −30% · II = ลูกยิง +2 ดาเมจ −30% · III = ลูกยิง +2 ดาเมจ −20% · วัสดุรูนมีทั้งหมด <b>47 ชนิด × 3 ขั้น = 141 ชิ้น</b></div>
+    <div class="bonus" style="margin-top:6px"><b>วิธีติดรูน:</b> เปิดหน้า<b>สกิล (K)</b> → เลือกสกิลที่มีช่องรูน → ใส่รูนตามอันดับแนะนำ · <b>ถอดรูนออกฟรี</b> ทดลองได้เสมอ · ทุกอย่างที่รูนเพิ่มรวมกันได้สูงสุด <b>+50%</b> ต่อการโจมตีหนึ่งครั้ง</div></div>`;
   const stars = `<div class="card"><h3>การติดดาวแนะนำ — 3 อันดับ</h3>
     <div style="line-height:2.2">${starBadge(1)} <b>ดาวทอง</b> = อันดับ 1 — ทำ/หาก่อน คุ้มที่สุด · ${starBadge(2)} <b>ดาวเงิน</b> = อันดับ 2 — ทำต่อเมื่อตัวหลักครบ · ${starBadge(3)} <b>ดาวทองแดง</b> = อันดับ 3 — เสริมท้ายเมื่อพร้อม</div>
     <div class="bonus" style="margin-top:8px">ดาวแนะนำโชว์ทั่วทั้งไกด์: รูนแนะนำต่อสกิล (หน้าคู่มืออาชีพ) · สายฟาร์ม/บอส/PvP ที่แนะนำ · อาวุธแนะนำของแต่ละชนิด (1–3 ตัว) · เป้าหมายมอนอันดับ 1–3 ของแมพเด่น · มอนที่โอกาสดรอปวัสดุสูงสุด (ดาวทอง)</div></div>`;
@@ -572,11 +579,17 @@ function renderDb() {
   } else if (dbTab === 'runes') {
     dbFilters.innerHTML = '';
     const list = D.runes.filter((r) => matches(q, r.n, r.id, r.droppers.map((d) => d.monN).join(' ')));
+    const spList = Object.entries(SPELL_RUNE_INFO)
+      .filter(([, n]) => matches(q, 'รูน' + n, n))
+      .map(([sid, n]) => `<div class="wep" data-item="mat:bl_rune_${sid}_1"><div class="ic">${aiHtml('mats', 'bl_rune_' + sid + '_1', 44) || '🧿'}</div>
+      <div class="nm" style="flex:1"><b>รูน${esc(n)}</b><small>ดรอปจากการร่ายสกิลเวท (Base Lv 70+)</small>
+      <span class="drop">✨ ธาตุสกิลที่ร่าย: <b>${esc(SPELL_RUNE_EL[sid])}</b> · ~0.002% ต่อการร่าย</span></div></div>`).join('');
     dbBox.innerHTML = `<p class="note">🧿 หัวข้อรูน: หลอม · รวมรูน · ติดดาวแนะนำ — รายชื่อรูนที่ดรอปอยู่ด้านล่าง</p>` + runeTopicHtml() +
+      spList +
       (list.map((r) => `<div class="wep" data-item="rune:${r.id}"><div class="ic">${aiHtml('mats', 'bl_rune_' + r.id + '_1', 44) || '🃏'}</div>
       <div class="nm" style="flex:1"><b>รูน ${esc(r.n.replace(/^รูน /, ''))}</b><small>ดรอปจาก ${r.droppers.length} มอน</small>
       ${r.droppers.map((d) => `<span class="drop">🎮 <b>${esc(d.monN)}</b> (Lv ${d.lv}) · ${pct(d.chance)}<br><span class="dropmap">📍 ${d.maps.map((m) => esc(m.n) + ' · ' + esc(m.region)).join(' / ')}</span></span>`).join('')}</div></div>`).join('') || empty());
-    dbCount.textContent = 'พบ ' + list.length + ' รูน';
+    dbCount.textContent = 'พบ ' + (list.length + Object.keys(SPELL_RUNE_INFO).length) + ' รูน';
   } else if (dbTab === 'cards') {
     dbFilters.innerHTML = `<label class="sel"><span>ประเภท</span><select id="fKind"><option value="">ทั้งหมด</option><option value="boss" ${dbState.kind === 'boss' ? 'selected' : ''}>บอส</option><option value="normal" ${dbState.kind === 'normal' ? 'selected' : ''}>ธรรมดา</option></select></label>`;
     let list = D.materials.filter((m) => m.id.startsWith('bl_card_')).filter((m) => {
@@ -766,8 +779,13 @@ function openModal(id) {
       let special = '';
       if (mid.startsWith('bl_rune_')) {
         const rid = mid.replace(/^bl_rune_|_\d$/g, ''), tier = +mid.slice(-1);
-        const dr = D.runes.find((x) => x.id === rid);
-        special = `<dt>รูนขั้น</dt><dd><b>${['I', 'II', 'III'][tier - 1]}</b> — ${tier > 1 ? `รวมจากรูนขั้น ${['I', 'II', 'III'][tier - 2]} × 3 ที่ป๋าหมูหริ่ง` : 'ดรอปจากมอน / ซื้อในตลาด'}${dr ? ` · รูนขั้น I ดรอปจาก: ${dr.droppers.slice(0, 3).map((d) => esc(d.monN) + ' (Lv' + d.lv + ') ' + pct(d.chance)).join(' · ')}…` : ''}</dd>`;
+        let src;
+        if (SPELL_RUNE_INFO[rid]) src = `ร่ายสกิลเวท (Base Lv 70+) โอกาส ~0.002%/การร่าย — ธาตุสกิล: ${SPELL_RUNE_EL[rid]}`;
+        else {
+          const dr = D.runes.find((x) => x.id === rid);
+          src = dr ? `ดรอปจากมอน: ${dr.droppers.slice(0, 3).map((d) => esc(d.monN) + ' (Lv' + d.lv + ') ' + pct(d.chance)).join(' · ')}…` : 'ดรอปจากมอน / ซื้อในตลาด';
+        }
+        special = `<dt>รูนขั้น</dt><dd><b>${['I', 'II', 'III'][tier - 1]}</b> — ${tier > 1 ? `รวมจากรูนขั้น ${['I', 'II', 'III'][tier - 2]} × 3 ที่ป๋าหมูหริ่ง` : src}</dd>`;
       } else if (mid.startsWith('bl_card_')) {
         const mon = MON[mid.slice(8)];
         special = mon ? `<dt>การ์ดของมอน</dt><dd>ดรอปจาก <b>${esc(mon.n)}</b> (Lv ${mon.lv}) · โอกาส ~0.01% · 📍 ${mon.maps.map((m2) => esc(MAP[m2]?.n || m2)).join(' / ')}</dd>` : '';
