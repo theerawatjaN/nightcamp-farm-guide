@@ -253,3 +253,12 @@ table.src th{color:var(--tx2);font-weight:600}
 .cmpbtn.on{background:var(--acc2);color:#04231f;border-color:var(--acc2)}
 .cmptbl th{color:var(--tx2);font-weight:600;white-space:nowrap;vertical-align:top}
 .cmptbl td{vertical-align:top}
+
+/* ---- ดาวแนะนำ 3 อันดับ ---- */
+.starbk{font-weight:700;white-space:nowrap}
+.starbk.gold{color:#ffd75e}
+.starbk.silver{color:#c9d6e8}
+.starbk.copper{color:#e0996a}
+.wstar.gold{color:#ffd75e;text-shadow:0 0 6px #ffd75e88}
+.wstar.silver{color:#c9d6e8;text-shadow:0 0 6px #c9d6e888}
+.wstar.copper{color:#e0996a;text-shadow:0 0 6px #e0996a88}

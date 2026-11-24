@@ -201,7 +201,7 @@ function drawBuilds() {
   if (!rated.length) { box.innerHTML = `<div class="card"><h3>🧭 ค่าสถานะที่แนะนำ</h3>${recStatsHtml('farm', j, lv)}<div class="bonus">อาชีพนี้ยังไม่มีสายสกิลแยก — เลือกอาชีพลูกเพื่อดูไกด์สาย</div></div>`; return; }
   const mk = (cat, icon, title) => {
     const rank = topLines(rated, cat);
-    const best = rank[0], alt = rank[1];
+    const best = rank[0], alt = rank[1], third = rank[2];
     const w = lineWeaponPick(new Set(best.skills.map((s) => s.id)));
     const tips = {
       farm: `วนร่าย <b>${esc(best.n)}</b> รื้อฝูง — จับคู่ธาตุอาวุธให้ตรงมอนในแมพ (ดูแมพแนะนำด้านล่าง) และใช้<a href="#plan">แผนฟาร์ม Lv1–99</a> วางเส้นทางทั้งตี้ บัพฮีลจากบิชอปช่วยลดเวลาพัก`,
@@ -209,8 +209,9 @@ function drawBuilds() {
       pvp: `ใช้สกิลควบคุม (${best.skills.filter((s) => CTRL_DOC.test(s.d)).slice(0, 2).map((s) => s.n).join(' / ') || 'ควบคุมเป้า'}) ปิดทางก่อนระเบิดดาเมจ · ในซีซัน 2 ดวลกันดาเมจถูกลดและไม่สึกอุปกรณ์ การ์ด/เกราะ/ฮีลทำงานปกติ — ตี้ที่มีฮีลได้เปรียบ`,
     };
     return `<div class="card"><h3>${icon} ${title}</h3>
-      <div class="line-name">⭐ แนะนำ: ${ELICON[best.el] || ''} ${esc(best.n)}</div>
-      ${alt ? `<div class="hint">สายรอง: ${esc(alt.n)}</div>` : ''}
+      <div class="line-name">${starBadge(1)} แนะนำ: ${ELICON[best.el] || ''} ${esc(best.n)}</div>
+      ${alt ? `<div class="hint">${starBadge(2)} สายรอง: ${esc(alt.n)}</div>` : ''}
+      ${third ? `<div class="hint">${starBadge(3)} สายเสริม: ${esc(third.n)}</div>` : ''}
       <div class="skl"><b>อาวุธที่ควรใช้:</b> ${w ? `<span class="lk" data-item="${w.id}" style="cursor:pointer">${WTICON[w.wt]} ${esc(w.n)} 🔍</span> <small>(Lv ${w.lv} · ATK ${w.atk} · ${ELICON[w.el]}${EL.th(w.el)})</small>` : 'อาวุธอาชีพประจำ'}</div>
       <div class="skl"><b>สกิลหลักของสาย:</b> ${best.skills.filter((s) => s.active || /ATK \+|คริ|ความเร็ว/.test(s.d)).slice(0, 4).map((s) => `<span class="lk" data-item="sk:${s.id}" style="cursor:pointer">${esc(s.n)}</span>`).join(' · ')}</div>
       <div class="skl"><b>🧿 รูนแนะนำสายนี้:</b> ${(() => { const seen = new Set(); const out = []; for (const s of best.skills.slice(0, 3)) for (const r2 of recommendRunes(s)) { if (!seen.has(r2.n)) { seen.add(r2.n); out.push(runeChipHtml(r2)); } } return out.slice(0, 4).join(' ') || '–'; })()}</div>
@@ -250,12 +251,51 @@ const RUNE_INFO = {
 const RUNE_BY_EL = { fire: 'ไฟลาม', water: 'ฟรอสต์', wind: 'สายฟ้าฟาด', poison: 'พิษซ้อน', shadow: 'เงาตีซ้ำ', holy: 'วงเวทแสงขับมาร', earth: 'หินแหลมพสุธา', undead: 'วงเวทแสงขับมาร', ghost: 'อุกกาบาตเงา', neutral: 'ดาบพายุหมุน' };
 const AOE_RE2 = /รัศมี|เป็นวง|วงกว้าง|รอบตัว|ทั้งแนว|ฝูง|กระจาย|พัด|ฝน|ศัตรูในวง|ทุก (ตัว|ศัตรู)/;
 const RUNE_ALIAS = { 'แยก': 'split', 'ขยาย': 'wide', 'จดจ่อ': 'focus', 'เสียงสะท้อน': 'echo', 'เร่ง': 'haste', 'ค้างอยู่': 'linger', 'ระเบิดศพ': 'corpse', 'เจาะเกราะ': 'apierce', 'เจาะเวท': 'wpierce', 'ดึง': 'pull', 'เด้ง': 'bounce', 'ดาบพายุหมุน': null, 'สายฟ้าฟาด': 'skyfall', 'วงเวทแสงขับมาร': null, 'หินแหลมพสุธา': null, 'อุกกาบาตถล่ม': null, 'เจ้าแห่งอสนี': null, 'อุกกาบาตเงา': null, 'ฟรอสต์': 'frostbite', 'ไฟลาม': 'wildfire', 'พิษซ้อน': 'venom', 'เงาตีซ้ำ': 'shade', 'สายฟ้าแตก': 'arc', 'กับดัก': 'trap' };
+/* ── หัวข้อรูน: ดรอป · หลอม · รวมรูน · ติดดาวแนะนำ ── */
+function drawRunes() {
+  const box = $('#gRunesBox');
+  if (!box) return;
+  const s2Table = `<div class="card"><h3>รูนซีซัน 2 — ผลตามขั้น I / II / III</h3><table class="src"><tr><th>รูน</th><th>ธาตุ</th><th>ผล (ขั้น I → II → III)</th></tr>${
+    Object.entries(RUNE_INFO).map(([n, i]) => `<tr><td><b>รูน${esc(n)}</b></td><td>${i.el || '–'}</td><td>${esc(i.d)}</td></tr>`).join('')
+  }</table></div>`;
+  const dropTable = `<div class="card"><h3>รูนที่ดรอปจากมอน (${D.runes.length} รูน — กดเพื่อดูแหล่งดรอปทั้งหมด)</h3><div style="margin-top:6px;line-height:2.1">${
+    D.runes.map((r) => {
+      const best = r.droppers.reduce((a, b) => (b.chance > (a?.chance || 0) ? b : a), null);
+      const bm = best ? best.maps[0] : null;
+      return `<span class="pill runechip" data-item="rune:${r.id}" title="ดรอปจาก ${r.droppers.length} มอน${best ? ' — โอกาสสูงสุด: ' + best.monN + ' (Lv' + best.lv + ') ' + pct(best.chance) : ''}">รูน${esc(r.n.replace(/^รูน /, ''))} 🔍</span>`;
+    }).join(' ')
+  }<p class="note" style="margin-top:8px">โอกาสดรอปรูนต่ำมาก (~0.01% ต่อตัว) — ฟาร์มมอนเลเวลใกล้เคียงตัวเองให้เยอะ ๆ หรือซื้อจากตลาด · ในซีซัน 2 รูนขั้น I ดรอปน้อยลงมากในบางพื้นที่ (มอนจะดรอปเมื่อเลเวลห่างจากคุณไม่เกิน ~10)</p></div></div>`;
+  const craft = `<div class="card"><h3>หลอม & รวมรูน — ที่ "ป๋าหมูหริ่ง" (Papa Muri)</h3>
+    <table class="src"><tr><th>ขั้น</th><th>วิธีได้มา</th><th>มูลค่าขาย (เหรียญ)</th></tr>
+      <tr><td><b>รูนขั้น I</b></td><td>ดรอปจากมอน / ซื้อในตลาด</td><td>19</td></tr>
+      <tr><td><b>รูนขั้น II</b></td><td>รวม รูน I × <b>3</b> ที่ป๋าหมูหริ่ง</td><td>68</td></tr>
+      <tr><td><b>รูนขั้น III</b></td><td>รวม รูน II × <b>3</b> ที่ป๋าหมูหริ่ง</td><td>225</td></tr></table>
+    <div class="bonus" style="margin-top:8px"><b>กติกาการรวม:</b> นำรูนชนิดเดียวกันขั้นเดียวกัน <b>3 อัน</b> ไปหาป๋าหมูหริ่ง เพื่อรวมเป็นขั้นถัดไป (I → II → III) — ผลแรงขึ้นและโทษเบาลงตามขั้น เช่น รูนแยก: I = ลูกยิง +1 ดาเมจ −30% · II = ลูกยิง +2 ดาเมจ −30% · III = ลูกยิง +2 ดาเมจ −20% · วัสดุรูนมีทั้งหมด <b>47 ชนิด × 3 ขั้น = 141 ชิ้น</b></div>
+    <div class="bonus" style="margin-top:6px"><b>วิธีติดรูน:</b> เปิดหน้า<b>สกิล (K)</b> → เลือกสกิลที่มีช่องรูน (ช่อง 1 เปิดตอนสกิลถึงครึ่งหนึ่งของเลเวลสูงสุด · ช่อง 2 ตอนถึงเลเวลสูงสุด · ตีปกติเปิดที่ Lv 40 และ 70) → ใส่รูนตามอันดับแนะนำ · <b>ถอดรูนออกฟรี</b> ทดลองได้เสมอ · ทุกอย่างที่รูนเพิ่มรวมกันได้สูงสุด <b>+50%</b> ต่อการโจมตีหนึ่งครั้ง</div></div>`;
+  const stars = `<div class="card"><h3>การติดดาวแนะนำ — 3 อันดับ</h3>
+    <div style="line-height:2.2">${starBadge(1)} <b>ดาวทอง</b> = อันดับ 1 — ทำ/หาก่อน คุ้มที่สุด · ${starBadge(2)} <b>ดาวเงิน</b> = อันดับ 2 — ทำต่อเมื่อตัวหลักครบ · ${starBadge(3)} <b>ดาวทองแดง</b> = อันดับ 3 — เสริมท้ายเมื่อพร้อม</div>
+    <div class="bonus" style="margin-top:8px">ดาวแนะนำโชว์ทั่วทั้งไกด์: รูนแนะนำต่อสกิล (ข้างบน) · สายฟาร์ม/บอส/PvP ที่แนะนำ · อาวุธแนะนำของแต่ละชนิด (1–3 ตัว) · เป้าหมายมอนอันดับ 1–3 ของแมพเด่น · มอนที่โอกาสดรอปวัสดุสูงสุด (ดาวทอง)</div></div>`;
+  box.innerHTML = dropTable + craft + s2Table + stars;
+}
+const STAR_RANKS = {
+  1: { sym: '★', cls: 'gold', label: 'ดาวทอง' },
+  2: { sym: '★', cls: 'silver', label: 'ดาวเงิน' },
+  3: { sym: '★', cls: 'copper', label: 'ดาวทองแดง' },
+};
+function starBadge(rank, short) {
+  const s = STAR_RANKS[rank];
+  if (!s) return '';
+  return short
+    ? `<span class="starbk ${s.cls}" title="อันดับแนะนำที่ ${rank} (${s.label})">${s.sym}</span>`
+    : `<span class="starbk ${s.cls}" title="อันดับแนะนำที่ ${rank}">${s.sym}${s.label}</span>`;
+}
 function runeChipHtml(r2) {
   const info = RUNE_INFO[r2.n];
   const tip = info ? esc(info.el ? 'ธาตุ ' + info.el + ' · ' + info.d : info.d) : '';
   const rid = RUNE_ALIAS[r2.n];
-  if (rid && D.runes.find((x) => x.id === rid)) return `<span class="pill runechip ${r2.star ? 'star' : ''}" data-item="rune:${rid}" title="${tip} — กดดูแหล่งดรอป">${r2.star ? '⭐ ' : ''}รูน${r2.n} 🔍</span>`;
-  return `<span class="pill runechip craft ${r2.star ? 'star' : ''}" data-item="runeS2:${r2.n}" title="${tip} — กดดูรายละเอียด">${r2.star ? '⭐ ' : ''}รูน${r2.n} 🔍</span>`;
+  const st = r2.rank ? starBadge(r2.rank) + ' ' : '';
+  if (rid && D.runes.find((x) => x.id === rid)) return `<span class="pill runechip ${r2.rank ? 'star' : ''}" data-item="rune:${rid}" title="${tip} — กดดูแหล่งดรอป">${st}รูน${r2.n} 🔍</span>`;
+  return `<span class="pill runechip craft ${r2.rank ? 'star' : ''}" data-item="runeS2:${r2.n}" title="${tip} — กดดูรายละเอียด">${st}รูน${r2.n} 🔍</span>`;
 }
 let gModeVal = 'farm';
 function recommendRunes(s, mode) {
@@ -276,12 +316,12 @@ function recommendRunes(s, mode) {
     rec.push({ n: aoe ? 'ขยาย' : 'แยก', star: !!aoe });
     if (s.active) rec.push({ n: 'เสียงสะท้อน' });
   }
-  return rec.slice(0, 4);
+  return rec.slice(0, 4).map((x, i) => ({ ...x, rank: i + 1 }));
 }
-function bestWeaponFor(ws, lv, mode) {
+function bestWeaponsTop(ws, lv, mode, n) {
   const usable = ws.filter((w) => w.lv <= lv);
   const pool = (usable.length ? usable : ws).slice();
-  if (!pool.length) return null;
+  if (!pool.length) return [];
   const KR = { L: 0, B: 1, C: 2, D: 3 };
   const jobEl = (cur.job.sk.find((s) => s.el) || {}).el || 'neutral';
   const wscore = (w, m) => {
@@ -293,8 +333,9 @@ function bestWeaponFor(ws, lv, mode) {
     return s;
   };
   pool.sort((a, b) => wscore(b, mode) - wscore(a, mode));
-  return pool[0];
+  return pool.slice(0, n);
 }
+function bestWeaponFor(ws, lv, mode) { return bestWeaponsTop(ws, lv, mode, 1)[0] || null; }
 
 /* --- skill lines + weapons per line --- */
 function lineWeapons(lineSkillIds) {
@@ -318,7 +359,7 @@ function drawLines() {
   const rankOf = (key) => topLines(rated, key);
   const bestFarm = rankOf('farm')[0]?.id, bestBoss = rankOf('boss')[0]?.id, bestPvp = rankOf('pvp')[0]?.id;
   const badge = (id) => [
-    id === bestFarm ? '<span class="tag r-legend">⭐ ฟาร์มเก่ง</span>' : '',
+    id === bestFarm ? `<span class="tag r-legend">${starBadge(1, true)} ฟาร์มเก่ง</span>` : '',
     id === bestBoss ? '<span class="tag r-legend">👑 ล่าบอส</span>' : '',
     id === bestPvp ? '<span class="tag r-legend">⚔️ PvP</span>' : '',
   ].join(' ');
@@ -326,8 +367,9 @@ function drawLines() {
   $('#gLinesBox').innerHTML = lines.length ? lines.map((l) => {
     const skIds = new Set(j.sk.filter((s) => s.line === l.id).map((s) => s.id));
     const ws = lineWeapons(skIds);
-    let lineStar = bestWeaponFor(ws, lv, gModeVal);
-    if (lineStar) lineStar = lineStar.id;
+    let lineStar = bestWeaponsTop(ws, lv, gModeVal, 3);
+    const wrank = {};
+    lineStar.forEach((w, i) => { wrank[w.id] = i + 1; });
     return `<div class="card"><div class="line-name">${ELICON[l.el] || ''} ${esc(l.n)}</div><div style="margin-bottom:4px">${badge(l.id)}</div>
       ${j.sk.filter((s) => s.line === l.id).map((s) => {
         const rec = recommendRunes(s);
@@ -335,8 +377,8 @@ function drawLines() {
         return `<div class="skl sklclick" data-item="sk:${s.id}" title="กดดูรายละเอียดสกิล"><span style="vertical-align:middle;margin-right:4px">${aiHtml('skills', s.icon, 28)}</span><b>${esc(s.n)}</b> <span class="pill">${s.active ? 'ใช้งาน' : 'พาสซีฟ'} · Lv${s.max}${s.cd ? ' · CD ' + s.cd + 's' : ''}</span><small>${esc(s.d)}</small>
           <small style="display:block;margin-top:4px">🧿 รูนแนะนำ: ${rec.map(runeChipHtml).join(' ')} <span class="hint">(ช่อง 1 เปิด Lv${slot1} · ช่อง 2 เปิด Lv${slot2})</span></small></div>`;
       }).join('')}
-      <h3 style="margin:10px 0 4px">อาวุธที่เสริมสายนี้ ${lv ? `<small class="hint">(⭐ = ดีที่สุดที่ Lv ${lv})</small>` : ''}</h3>
-      ${ws.length ? ws.slice(0, 6).map((w) => { const c = wepCard(w, w.wsk.find((b) => b[1] === j.id && skIds.has(b[0]))); return w.id === lineStar ? c.replace('<div class="nm"', '<span class="tag r-legend" style="margin-left:6px">⭐ แนะนำ Lv ' + lv + '</span><div class="nm"') : c; }).join('') : '<span class="hint">ยังไม่มีอาวุธที่เสริมสายนี้ในข้อมูล</span>'}
+      <h3 style="margin:10px 0 4px">อาวุธที่เสริมสายนี้ ${lv ? `<small class="hint">(ดาวทอง/เงิน/ทองแดง = อันดับ 1–3 ที่ Lv ${lv})</small>` : ''}</h3>
+      ${ws.length ? ws.slice(0, 6).map((w) => { const c = wepCard(w, w.wsk.find((b) => b[1] === j.id && skIds.has(b[0]))); return wrank[w.id] ? c.replace('<div class="nm"', `<span class="tag r-legend" style="margin-left:6px">${starBadge(wrank[w.id], true)} แนะนำ Lv ${lv}</span><div class="nm"`) : c; }).join('') : '<span class="hint">ยังไม่มีอาวุธที่เสริมสายนี้ในข้อมูล</span>'}
     </div>`;
   }).join('') : `<div class="card"><span class="hint">อาชีพนี้เป็นอาชีพเริ่มต้น/ฐาน — เลือกอาชีพลูกเพื่อดูสายการเล่น</span></div>`;
 }
@@ -350,16 +392,15 @@ function drawWeapons() {
   if (onlyWsk) ws = ws.filter((w) => w.wsk && w.wsk.some((b) => b[1] === cur.job.id));
   ws.sort((a, b) => a.lv - b.lv || (b.atk - a.atk));
   const lv = +gLv.value;
-  const stars = new Set();
+  const wrank = {};
   for (const wt of cur.wts) {
     const pool = ws.filter((w) => w.wt === wt);
-    const pick = bestWeaponFor(pool, lv, gModeVal);
-    if (pick) stars.add(pick.id);
+    bestWeaponsTop(pool, lv, gModeVal, 3).forEach((w, i) => { wrank[w.id] = i + 1; });
   }
-  $('#gWeaponsBox').innerHTML = `<p class="hint">⭐ = อาวุธแนะนำโหมด${({ farm: 'ฟาร์ม', pvp: 'PvP', boss: 'ล่าบอส' })[gModeVal]}ที่ Lv ${lv} · กดการ์ดเพื่อดูแหล่งดรอป</p>` + ws.map((w) => {
+  $('#gWeaponsBox').innerHTML = `<p class="hint">${starBadge(1, true)}${starBadge(2, true)}${starBadge(3, true)} = อันดับ 1–3 ของอาวุธชนิดนั้น โหมด${({ farm: 'ฟาร์ม', pvp: 'PvP', boss: 'ล่าบอส' })[gModeVal]}ที่ Lv ${lv} · กดการ์ดเพื่อดูแหล่งดรอป</p>` + ws.map((w) => {
     const wsk = w.wsk && w.wsk.find((b) => b[1] === cur.job.id);
     let c = wepCard(w, wsk);
-    if (stars.has(w.id)) c = c.replace('<div class="nm"', `<span class="tag r-legend" style="margin-left:6px">⭐ แนะนำ Lv ${lv}</span><div class="nm"`);
+    if (wrank[w.id]) c = c.replace('<div class="nm"', `<span class="tag r-legend" style="margin-left:6px">${starBadge(wrank[w.id], true)} แนะนำ Lv ${lv}</span><div class="nm"`);
     return c;
   }).join('') || '<p class="hint">ไม่พบอาวุธตามเงื่อนไข</p>';
 }
@@ -684,7 +725,7 @@ function openModal(id) {
           <dt>รายละเอียด</dt><dd>${esc(mt.d) || '–'}</dd>
           <dt>ราคาขาย</dt><dd>${mt.p ? mt.p.toLocaleString() + ' เหรียญ' : '–'}${mt.rare ? ' · หายาก' : ''}</dd>
           <dt>วิธีหา</dt><dd>${esc(mt.from) || '–'}</dd>
-          <dt>มอนที่ดรอป</dt><dd>${droppers.map((d) => `${d.chance === best && best > 0 ? '⭐ ' : ''}${esc(d.m.n)} (Lv${d.m.lv}) · ${pct(d.chance)} · 📍 ${d.m.maps.map((m2) => esc(MAP[m2]?.n || m2) + ' (' + esc(MAP[m2]?.regionN || '') + ')').join(' / ')}`).join('<br>') || '– (ได้จากสกิลชีวิต/เหมืองตาม "วิธีหา")'}</dd>
+          <dt>มอนที่ดรอป</dt><dd>${droppers.map((d) => `${d.chance === best && best > 0 ? starBadge(1, true) + ' ' : ''}${esc(d.m.n)} (Lv${d.m.lv}) · ${pct(d.chance)} · 📍 ${d.m.maps.map((m2) => esc(MAP[m2]?.n || m2) + ' (' + esc(MAP[m2]?.regionN || '') + ')').join(' / ')}`).join('<br>') || '– (ได้จากสกิลชีวิต/เหมืองตาม "วิธีหา")'}</dd>
           <dt>ใช้ทำ</dt><dd>${usedIn.map(esc).join(' · ') || '–'}</dd>
         </div>`;
     }
@@ -713,7 +754,7 @@ function openModal(id) {
         <dt>ประเภท</dt><dd>รูนซีซัน 2${info && info.el ? ' · ธาตุ ' + esc(info.el) : ''}</dd>
         <dt>ผล (I/II/III)</dt><dd>${info ? esc(info.d) : '–'}</dd>
         <dt>ใส่ได้กับ</dt><dd>สกิลทุกชนิดที่มีช่องรูน (ช่อง 1 เปิดที่ครึ่งหนึ่งของเลเวลสูงสุดของสกิล, ช่อง 2 ที่เลเวลสูงสุด · ตีปกติเปิดที่ Lv 40 และ 70)</dd>
-        <dt>แหล่งที่ได้</dt><dd>รูนซีซัน 2 นี้ไม่มีข้อมูลมอนที่ดรอปโดยตรงในวิกิ — ได้จากการหลอมวัสดุรูน (bl_rune_*) จากบอส/เหมืองตามระบบสกิลชีวิตและดันเจี้ยนลึก · ดูรายละเอียดในแท็บ "ตีบวก & ออฟ"</dd>
+        <dt>แหล่งที่ได้</dt><dd>รูนขั้น I ดรอปจากมอน (โอกาสต่ำ) และซื้อขายในตลาด/ขายลุงโกโก้ได้ · นำรูนขั้นเดียวกัน <b>3 อันไปรวมที่ป๋าหมูหริ่ง</b> เป็นขั้นถัดไป (I → II → III) · ดูรายละเอียดในหัวข้อ <a href="#g-runes">รูนสกิล</a> หน้าคู่มืออาชีพ</dd>
       </div>
       <p class="note">กติกา: ทุกอย่างที่รูนเพิ่มรวมกันได้สูงสุด +50% ต่อการโจมตี · ถอดรูนออกฟรี</p>`;
   } else if (id.startsWith('rune:')) {
@@ -842,7 +883,7 @@ function renderForge() {
     let html = `<div class="card" style="margin-bottom:12px"><b>กฎการตีบวก</b> (ซีซัน 2)
       <div class="bonus" style="margin-top:6px">ป๋าหมูหริ่งตีบวกอาวุธ/เกราะ/หมวก/เครื่องประดับจาก +1 ถึง +10 · อาวุธแต่ละเลเวล ATK +4% (+40% ที่ +10) · เกราะ/หมวกได้ DEF +1 ทุกสองเลเวล และ HP +0.5% ต่อเลเวล · ไม่มีขั้นการันตีแล้ว พลาดเสียแค่ค่าตี · <b>+9/+10</b> พลาดแล้วขั้นลดลง 1 และมีโอกาส <b>${D.refine.brk['9']}% / ${D.refine.brk['10']}%</b> ที่ชิ้นจะแตก (เปิดใช้<b>หินกันแตก</b> — หลอมจากแกนดาว ×1 + แท่งดาว ×2 — เพื่อกันแตก) · อาวุธเรืองแสง: +5 ประกาย, +7 น้ำเงิน, +8 ม่วง, +9 ส้มทอง, +10 สายรุ้ง</div></div>`;
     if (q) html += `<p class="hint">ค้นหา "${esc(q)}" — แสดงเฉพาะวัสดุที่ตรง</p>`;
-    html += `<div class="card" style="margin-bottom:10px"><b>🧪 วัสดุที่ใช้ (กดดูแหล่งดรอป — มอนที่ดรอปได้จะติด ⭐ ที่โอกาสสูงสุด)</b><div style="margin-top:6px">
+    html += `<div class="card" style="margin-bottom:10px"><b>🧪 วัสดุที่ใช้ (กดดูแหล่งดรอป — ${starBadge(1, true)} ดาวทอง = มอนที่โอกาสสูงสุด)</b><div style="margin-top:6px">
       ${matChip('lc_quench_oil')}${matChip('mat_safety')}${matChip('lc_starcore')}${matChip('lc_ingot_star')}${matChip('mat_aurelion_core')}</div></div>`;
     html += `<h3>โอกาสสำเร็จ (%)</h3><table class="src"><tr><th>ขั้น</th><th>${GRADE_TH.join('</th><th>')}</th></tr>`;
     for (let s = 1; s <= 10; s++) html += `<tr><td><b>+${s}</b></td>${[1, 2, 3, 4].map((g) => `<td>${rates[g][s]}%</td>`).join('')}</tr>`;
@@ -873,11 +914,11 @@ function renderForge() {
       return { good: s2, oreN: oreMat ? oreMat.n : s2.from, fromText, droppers: droppers.sort((a, b) => a.m.lv - b.m.lv).slice(0, 4) };
     });
     if (srcs.length) {
-      html += `<h3 style="margin-top:14px">📍 แหล่งที่ได้แร่/วัสดุตีบวก (ขุดเหมือง · ตัดไม้ · มอน — มอนที่ดรอปเยอะสุดติด ⭐)</h3>
+      html += `<h3 style="margin-top:14px">📍 แหล่งที่ได้แร่/วัสดุตีบวก (ขุดเหมือง · ตัดไม้ · มอน — มอนที่ดรอปเยอะสุดติด ${starBadge(1, true)} ดาวทอง)</h3>
         <table class="src"><tr><th>วัสดุหลอม</th><th>แร่ดิบ</th><th>แหล่งที่ได้</th></tr>`;
       for (const { good, oreN, fromText, droppers } of srcs) {
         const best = droppers.length ? Math.max(...droppers.map((d) => d.chance)) : 0;
-        const monHtml = droppers.length ? '<br>' + droppers.map((d) => `${(d.chance === best ? '⭐ ' : '')}🎮 ${esc(d.m.n)} (Lv${d.m.lv}) · ${pct(d.chance)} · <small>${d.m.maps.map((mid) => esc(MAP[mid]?.n || mid)).join('/')}</small>`).join('<br>') : '';
+        const monHtml = droppers.length ? '<br>' + droppers.map((d) => `${(d.chance === best ? starBadge(1, true) + ' ' : '')}🎮 ${esc(d.m.n)} (Lv${d.m.lv}) · ${pct(d.chance)} · <small>${d.m.maps.map((mid) => esc(MAP[mid]?.n || mid)).join('/')}</small>`).join('<br>') : '';
         html += `<tr><td>${matChip(good.from, good.n)}</td><td>${matChip(good.from, oreN)}</td><td>${fromText ? esc(fromText) : '–'}${monHtml}</td></tr>`;
       }
       html += `</table>
@@ -894,7 +935,7 @@ function renderForge() {
     list.forEach((o) => { (byGroup[o.g || 'atk'] = byGroup[o.g || 'atk'] || []).push(o); });
     forgeBox.innerHTML = `<div class="card" style="margin-bottom:12px"><b>กฎแถวออฟ</b>
       <div class="bonus" style="margin-top:6px">อุปกรณ์ทุกชิ้นดรอปพร้อมแถวออฟ: อาวุธ <b>1/2/2/3</b> แถวตามเกรด · เสื้อกับกางเกง <b>1/1/2/2</b> · หมวกกับเครื่องประดับ <b>1</b> (ชิ้นจากบอสเพิ่มอีก 1) · แต่ละแถวสุ่มขั้น: <b>ธรรมดา 60% · ดี 30% · เทพ 10%</b> · ซีซัน 2 ลดค่าทุกแถวลงครึ่งหนึ่ง และจำกัดแถวสเตตัสไว้ที่ +10 ต่อแถว (FLEE 50, ร่าย 30%, ดาเมจคริ 100%) · ชิ้นหนึ่งมีได้สูงสุด <b>4 แถว</b> และชนิดเดียวกันได้ไม่เกิน <b>2</b></div>
-      <div class="bonus" style="margin-top:6px"><b>🧪 วัสดุที่ใช้ (กดดูแหล่งดรอป — ⭐ = มอนที่โอกาสดรอปสูงสุด):</b> ${matChip('mat_opt_stone')}${matChip('mat_drill_stone')}${matChip('mat_opt_stone_b')}</div></div>
+      <div class="bonus" style="margin-top:6px"><b>🧪 วัสดุที่ใช้ (กดดูแหล่งดรอป — ${starBadge(1, true)} ดาวทอง = มอนที่โอกาสดรอปสูงสุด):</b> ${matChip('mat_opt_stone')}${matChip('mat_drill_stone')}${matChip('mat_opt_stone_b')}</div></div>
       <table class="src"><tr><th>แถวออฟ</th><th>ธรรมดา (60%)</th><th>ดี (30%)</th><th>เทพ (10%)</th><th>เพดาน</th><th>เปิดที่</th></tr>
       ${Object.entries(byGroup).map(([g, arr]) => `<tr><td colspan="6" style="color:var(--acc);font-weight:700">${GROUP_TH[g] || g}</td></tr>` + arr.map((o) =>
         `<tr><td><b>${esc(o.label)}</b>${o.unit === '%' ? ' <small>%</small>' : ''}${o.subs.length ? `<br><small>${esc(o.subs.join(' / '))}</small>` : ''}</td>${o.tiers.map((tv) => `<td>${tv[0] === tv[1] ? tv[0] : tv[0] + '–' + tv[1]}${o.unit}</td>`).join('')}<td>${o.cap ? (o.cap > 1 ? o.cap + o.unit : (o.cap * 100) + '%') : '–'}</td><td>${o.on.map(esc).join(', ')}</td></tr>`).join('')).join('')}</table>
@@ -1448,13 +1489,14 @@ function drawMonCards() {
   const picks = bestMaps(lv, wEl, 6);
   const okMonIds = new Set();
   picks.forEach((p) => p.m.mons.forEach((mn) => okMonIds.add(mn.id)));
-  const starIds = new Set(((picks[0] || {}).best || []).slice(0, 3).map((mn) => mn.id));
+  const mrank = {};
+  ((picks[0] || {}).best || []).slice(0, 3).forEach((mn, i) => { mrank[mn.id] = i + 1; });
   const list = D.monsters.slice().sort((a, b) => (okMonIds.has(b.id) - okMonIds.has(a.id)) || a.lv - b.lv);
-  $('#gMonBox').innerHTML = `<p class="hint">🎨 การ์ดสี = มอนในแมพแนะนำของ ${esc(cur.job.n)} ที่ Lv ${lv}${wEl ? ' (ธาตุ ' + EL.th(wEl) + ')' : ''} · ⭐ = เป้าหมายแนะนำ 3 ตัวแรกของแมพเด่น · เทา = มอนอื่น ๆ · กดการ์ดเพื่อดูดรอป</p><div class="cardgrid">` +
+  $('#gMonBox').innerHTML = `<p class="hint">🎨 การ์ดสี = มอนในแมพแนะนำของ ${esc(cur.job.n)} ที่ Lv ${lv}${wEl ? ' (ธาตุ ' + EL.th(wEl) + ')' : ''} · ${starBadge(1, true)}${starBadge(2, true)}${starBadge(3, true)} = เป้าหมายแนะนำอันดับ 1–3 ของแมพเด่น · เทา = มอนอื่น ๆ · กดการ์ดเพื่อดูดรอป</p><div class="cardgrid">` +
     list.map((m) => {
-      const ok = okMonIds.has(m.id), star = starIds.has(m.id);
-      return `<div class="wcard ${ok ? 'ok' : 'dim'} ${star ? 'star' : ''}" data-item="${m.id}" title="${esc(m.n)} — กดดูดรอป">
-        <span class="wlv">Lv ${m.lv}</span>${star ? '<span class="wstar">⭐</span>' : ''}
+      const ok = okMonIds.has(m.id), rank = mrank[m.id];
+      return `<div class="wcard ${ok ? 'ok' : 'dim'} ${rank ? 'star' : ''}" data-item="${m.id}" title="${esc(m.n)} — กดดูดรอป">
+        <span class="wlv">Lv ${m.lv}</span>${rank ? `<span class="wstar ${STAR_RANKS[rank].cls}">${STAR_RANKS[rank].sym}</span>` : ''}
         <span class="wic">${aiHtml('mons', m.id, 46) || (m.boss ? '👑' : ELICON[m.el])}</span>
         <span class="wnm">${esc(m.n)}</span>
         <span class="wsub">${ELICON[m.el] || ''}${m.boss ? ' 👑' : ''}</span>
@@ -1732,6 +1774,7 @@ function drawPlanScene(c) {
 /* ---------- boot ---------- */
 function boot() {
   unnatifyAll();
+  drawRunes();
   const h = location.hash.replace('#', '');
   showPage(pages.includes(h) ? h : 'guide');
   openJob('firemage');
