@@ -611,7 +611,28 @@ document.addEventListener('click', (e) => {
 });
 function openModal(id) {
   const B = $('#modalBody');
-  if (id.startsWith('sk:')) {
+  if (id.startsWith('mat:')) {
+    const mid = id.slice(4);
+    const mt = D.materials.find((x) => x.id === mid);
+    if (mt) {
+      const droppers = [];
+      for (const m of D.monsters) {
+        const d = (m.mats || []).find((x) => x[0] === mid);
+        if (d) droppers.push({ m, chance: d[1] });
+      }
+      droppers.sort((a, b) => a.m.lv - b.m.lv);
+      const usedIn = [];
+      D.craft.forEach((c) => c.list.forEach((x) => { if ((x.mats || []).some((m2) => m2.id === mid)) usedIn.push(x.n); }));
+      $('#modalBody').innerHTML = `<h2>${esc(mt.n)}</h2>
+        <div class="kv">
+          <dt>รายละเอียด</dt><dd>${esc(mt.d) || '–'}</dd>
+          <dt>ราคาขาย</dt><dd>${mt.p ? mt.p.toLocaleString() + ' เหรียญ' : '–'}${mt.rare ? ' · หายาก' : ''}</dd>
+          <dt>วิธีหา</dt><dd>${esc(mt.from) || '–'}</dd>
+          <dt>มอนที่ดรอป</dt><dd>${droppers.map((d) => `${esc(d.m.n)} (Lv${d.m.lv}) · ${pct(d.chance)} · 📍 ${d.m.maps.map((m2) => esc(MAP[m2]?.n || m2) + ' (' + esc(MAP[m2]?.regionN || '') + ')').join(' / ')}`).join('<br>') || '– (ได้จากสกิลชีวิต/เหมืองตาม "วิธีหา")'}</dd>
+          <dt>ใช้ทำ</dt><dd>${usedIn.map(esc).join(' · ') || '–'}</dd>
+        </div>`;
+    }
+  } else if (id.startsWith('sk:')) {
     const sid = id.slice(3);
     let sk = null, fromJob = null;
     for (const j2 of D.jobs) { const f = (j2.sk || []).find((x) => x.id === sid); if (f) { sk = f; fromJob = j2; break; } }
@@ -693,7 +714,7 @@ function openModal(id) {
 }
 
 /* ════════════════════════ PAGE 2.5 · ตีบวก & ออฟ ════════════════════════ */
-let forgeTab = 'refine';
+let forgeTab = 'howto';
 const forgeQ = $('#forgeQ'), forgeFilters = $('#forgeFilters'), forgeBox = $('#forgeBox');
 $('#forgeTabs').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; forgeTab = b.dataset.tab; $$('#forgeTabs button').forEach((x) => x.classList.toggle('on', x === b)); renderForge(); });
 forgeQ.addEventListener('input', renderForge);
@@ -701,7 +722,50 @@ forgeQ.addEventListener('input', renderForge);
 const GRADE_TH = ['เกรด 1', 'เกรด 2', 'เกรด 3', 'เกรด 4'];
 function renderForge() {
   const q = forgeQ.value.trim();
-  if (forgeTab === 'refine') {
+  if (forgeTab === 'howto') {
+    forgeFilters.innerHTML = '';
+    /* ขั้นที่ 1: วัสดุจากมอนช่วงต้น — ดึงจากสูตรคราฟเกรด 1 */
+    const starterMats = new Set();
+    D.craft.forEach((c) => c.list.filter((x) => x.g === 1).forEach((x) => Object.keys((D.weapons.find((w) => w.id === x.id) || {}).mats || {})));
+    D.craft.forEach((c) => c.list.forEach((x) => { if (x.g === 1) Object.entries(x.mats || {}).forEach(([mid]) => starterMats.add(mid)); }));
+    const matDroppers = (mid) => {
+      const out = [];
+      for (const m of D.monsters) {
+        const d = (m.mats || []).find((x) => x[0] === mid);
+        if (d) out.push({ m, chance: d[1] });
+      }
+      return out.sort((a, b) => a.m.lv - b.m.lv).slice(0, 3);
+    };
+    const matRows = [...starterMats].slice(0, 10).map((mid) => {
+      const mt = D.materials.find((x) => x.id === mid); if (!mt) return '';
+      const dr = matDroppers(mid);
+      return `<tr><td><span class="lk matlink" data-item="mat:${mid}" style="cursor:pointer">${esc(mt.n)} 🔍</span></td><td><small>${esc(mt.from || '–')}</small></td><td>${dr.map((d) => `🎮 ${esc(d.m.n)} (Lv${d.m.lv}) · ${pct(d.chance)} · <small>${d.m.maps.map((mid2) => esc(MAP[mid2]?.n || mid2)).join('/')}</small>`).join('<br>')}</td></tr>`;
+    }).join('');
+    /* ขั้นที่ 2: แร่/ไม้จากสกิลชีวิต */
+    const ores = D.smelt.filter((s2) => s2.from).map((s2) => {
+      const oreMat = D.materials.find((x) => x.id === s2.from);
+      return { good: s2, oreN: oreMat ? oreMat.n : s2.from, fromText: oreMat ? (oreMat.from || '') : '' };
+    }).filter((x) => x.fromText);
+    /* ขั้นที่ 4: หินออฟ — แหล่ง */
+    forgeBox.innerHTML = `
+      <div class="card" style="margin-bottom:12px"><b>🧭 ภาพรวม: เส้นทางทำอุปกรณ์ตั้งแต่เริ่มเกม</b>
+      <div class="bonus" style="margin-top:6px">① ฟาร์มมอนตามเลเวล → ได้ <b>เหรียญ + วัสดุมอน + อุปกรณ์ดรอป</b> · ② เปิด<b>สกิลชีวิต</b> (H) ขุดแร่/ตัดไม้ → แร่/ไม้ · ③ เอาแร่/ไม้ไป<b>หลอม</b>ที่เตาหลอมเป็นแท่ง/แผ่น · ④ ใช้ใบสั่งงาน<b>คราฟอาวุธ</b>ที่เตาตีเหล็ก (Y) · ⑤ เอาของไหนก็ได้ไป<b>ตีบวก</b>กับป๋าหมูหริ่ง · ⑥ สุ่ม<b>แถวออฟ</b>ด้วยหินออฟชั่น · ⑦ ของดรอปอาจเป็น<b>ของแปดเปื้อน</b> (1 ใน 50)</div></div>
+      <div class="card setc" style="margin-bottom:10px"><h3>ขั้นที่ 1 · วัสดุจากมอน (ช่วงต้นเกม)</h3>
+      <p class="hint">มอนทุกตัวดรอปวัสดุของตัวเอง — ตารางนี้คือวัสดุที่สูตรคราฟเกรด 1 ใช้ (กดชื่อดูแหล่งเต็ม)</p>
+      <table class="src"><tr><th>วัสดุ</th><th>วิธีหา</th><th>มอนที่ดรอป (เรียงตามเลเวล)</th></tr>${matRows}</table></div>
+      <div class="card setc" style="margin-bottom:10px"><h3>ขั้นที่ 2 · แร่ & ไม้จากสกิลชีวิต (ขุดเหมือง / ตัดไม้)</h3>
+      <table class="src"><tr><th>หลอมเป็น</th><th>แร่/ไม้ดิบ</th><th>แหล่งเก็บ</th></tr>
+      ${ores.map((o) => `<tr><td><b>${esc(o.good.n)}</b></td><td>${esc(o.oreN)}</td><td>${esc(o.fromText)}</td></tr>`).join('')}</table>
+      <p class="note">แมพเหมือง: เหมืองริมทุ่ง F1–3 (แร่เหล็ก) · เหมือนเงินลึก B4–B5 (แร่เงิน/เงินจันทร์) · เหมืองอุกกาบาต F1–7 (แร่ดาวตก — ใช้ตีบวกเกรด 4) · แร่อื่น ๆ อยู่ในดันเจี้ยนตามข้อความข้างบน</p></div>
+      <div class="card setc" style="margin-bottom:10px"><h3>ขั้นที่ 3 · หลอม & คราฟ</h3>
+      <div class="bonus">เอาแร่/ไม้ไป<b>เตาหลอม</b> (แท็บตีเหล็ก/คราฟด้านบน — แต่ละแท่งมีสูตรระบุในคำอธิบาย) แล้วใช้<b>ใบสั่งงาน</b>สั่งตีอาวุธที่ต้องการ — ดูสูตรครบทุกประเภทในแท็บ "ตีเหล็ก / คราฟต์"</div></div>
+      <div class="card setc" style="margin-bottom:10px"><h3>ขั้นที่ 4 · ตีบวก +10</h3>
+      <div class="bonus">ไปหา<b>ป๋าหมูหริ่ง</b> ใช้เหรียญตามตาราง + วัสดุแท่งตามชนิดของชิ้น (ดูแท็บ "ตีบวก +10") · อาวุธแต่ละเลเวล ATK +4% · ที่ <b>+9/+10</b> พลาดมีโอกาสแตก — เปิด<b>หินกันแตก</b> (หลอมจาก<b>แกนดาว ×1 + แท่งดาว ×2</b>) ก่อนตี</div></div>
+      <div class="card setc" style="margin-bottom:10px"><h3>ขั้นที่ 5 · สุ่มแถวออฟ</h3>
+      <div class="bonus">อุปกรณ์ดรอปมาพร้อมแถวออฟอยู่แล้ว · จะ<b>เจาะสุ่มใหม่</b>ที่ป๋าหมูหริ่ง: 6,000,000 เหรียญ + หินเจาะออฟ · <b>หินออฟ</b>ดรอปจากมอน 0.01% (เฉพาะมอนห่างเลเวลไม่เกิน 10) · บอส <b>8%</b> · หีบ <b>1.5%</b> · แบบผูกตัวได้จากภารกิจมือใหม่/เช็กอินรายวัน/หีบรายสัปดาห์ · หินเจาะจากมอน Lv50+ 0.0001% · บอส 0.2% · หีบทอง 0.5%</div></div>
+      <div class="card setc" style="margin-bottom:10px"><h3>ขั้นที่ 6 · ของแปดเปื้อน & รูน</h3>
+      <div class="bonus">ของที่ดรอปมีโอกาส <b>2% (1 ใน 50)</b> เป็นของแปดเปื้อน (☾) — เด่นแต่มีข้อเสีย ดูรายการในแท็บ "ของแปดเปื้อน" · ส่วน<b>รูนสกิล</b>ดรอปจากมอน (กดรูนในหน้าคู่มืออาชีพเพื่อดูว่ามอนไหนดรอป)</div></div>`;
+  } else if (forgeTab === 'refine') {
     forgeFilters.innerHTML = '';
     const rates = D.refine.rates, cost = D.refine.cost;
     let html = `<div class="card" style="margin-bottom:12px"><b>กฎการตีบวก</b> (ซีซัน 2)
@@ -777,7 +841,7 @@ function renderForge() {
     const list = D.craft.filter((c) => (!tsel || c.t === tsel) && matches(q, c.n, c.list.map((x) => x.n).join(' ')));
     forgeBox.innerHTML = `<p class="card hint" style="margin-bottom:12px">คราฟต์ที่<b>เตาหลอม</b>ด้วยใบสั่งงาน — ใช้วัสดุจากการฟาร์ม/เหมือง/สกิลชีวิต · แสดงคุณสมบัติครบของไอเทมที่คราฟได้ · กด ⚖️ ที่รายการเพื่อเปรียบเทียบกับดาบบอส/ดาบดรอปตัวอื่น</p>` +
       list.map((c) => `<div class="card setc"><h3>${esc(c.n)}</h3><table class="src"><tr><th>ไอเทม</th><th>เกรด</th><th>เหรียญ</th><th>วัสดุ</th><th>ATK</th><th>ธาตุ</th><th>คุณสมบัติ</th></tr>
-        ${c.list.map((x) => { const w = D.weapons.find((z) => z.id === x.id); return `<tr><td><b>${esc(x.n)}</b>${w && w.wsk ? wskLine(w) : ''}</td><td>${x.g ? GRADE_TH[x.g - 1] : '–'}</td><td>${x.coins.toLocaleString()}</td><td>${x.mats.map((m) => esc(m.n) + '×' + m.q).join(' + ')}</td><td>${w ? w.atk : '–'}</td><td>${w ? elTag(w.el) : '–'}</td><td>${w && w.ab ? esc(w.ab) : '–'} ${w ? cmpBtn(w) : ''}</td></tr>`; }).join('')}</table></div>`).join('') || '<p class="hint">ไม่พบสูตร</p>';
+        ${c.list.map((x) => { const w = D.weapons.find((z) => z.id === x.id); return `<tr><td><b>${esc(x.n)}</b>${w && w.wsk ? wskLine(w) : ''}</td><td>${x.g ? GRADE_TH[x.g - 1] : '–'}</td><td>${x.coins.toLocaleString()}</td><td>${x.mats.map((m) => `<span class="lk matlink" data-item="mat:${m.id}" style="cursor:pointer" title="กดดูแหล่งที่ได้">${esc(m.n)}×${m.q} 🔍</span>`).join(' + ')}</td><td>${w ? w.atk : '–'}</td><td>${w ? elTag(w.el) : '–'}</td><td>${w && w.ab ? esc(w.ab) : '–'} ${w ? cmpBtn(w) : ''}</td></tr>`; }).join('')}</table></div>`).join('') || '<p class="hint">ไม่พบสูตร</p>';
   }
 }
 

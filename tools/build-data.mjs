@@ -179,7 +179,7 @@ const craft = W.sys.craft.map((c) => ({
   t: c.t, n: t(c.n),
   list: c.list.filter((x) => x.mats).map((x) => ({
     id: x.id, n: t(x.n), g: x.g ?? null, coins: x.coins ?? 0,
-    mats: Object.entries(x.mats).map(([mid, q]) => ({ n: MAT[mid] ? t(MAT[mid].n) : (smeltGoods[mid] ? t(smeltGoods[mid].n) : mid), q })),
+    mats: Object.entries(x.mats).map(([mid, q]) => ({ id: mid, n: MAT[mid] ? t(MAT[mid].n) : (smeltGoods[mid] ? t(smeltGoods[mid].n) : mid), q })),
   })),
 }));
 
@@ -195,5 +195,5 @@ const data = {
 
 const out = 'window.NC_DATA = ' + JSON.stringify(data) + ';';
 fs.mkdirSync(path.join(root, 'js'), { recursive: true });
-fs.writeFileSync(path.join(root, 'js/data.v22.js'), out);
+fs.writeFileSync(path.join(root, 'js/data.v23.js'), out);
 console.log('written js/data.js', (out.length / 1e6).toFixed(2), 'MB ·', weapons.length, 'weapons ·', monsters.length, 'monsters ·', maps.length, 'maps ·', sets.length, 'sets ·', runes.length, 'runes');
