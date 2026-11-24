@@ -1388,8 +1388,19 @@ function initComboDelegation() {
   document.addEventListener('click', (e) => {
     const it = e.target.closest && e.target.closest('.comboitem');
     if (it) { comboPick(it); return; }
-    if (!(e.target.closest && e.target.closest('.scombo'))) comboCloseAll();
+    const inp = e.target.closest && e.target.closest('.comboinput');
+    if (inp) return;
+    // คลิกพื้นที่แผงเปล่า หรือที่อื่น ๆ → ปิดทั้งหมด
+    comboCloseAll();
   });
+  document.addEventListener('mousedown', (e) => {
+    const row = e.target.closest && e.target.closest('.comborow');
+    if (row && !e.target.closest('.comboitem')) comboCloseAll(); // กดพื้นแผงเปล่า → ปิดเลย
+  });
+  window.addEventListener('scroll', (e) => {
+    if (e.target && e.target.classList && e.target.classList.contains('comborow')) return; // เลื่อนในแผงตัวเอง
+    comboCloseAll();
+  }, true);
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Enter' && e.target.classList && e.target.classList.contains('comboinput')) {
       const first = e.target.closest('.scombo').querySelector('.comboitem');
