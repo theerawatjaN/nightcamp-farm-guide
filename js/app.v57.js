@@ -887,9 +887,11 @@ const SLOT_TH = { weapon: 'อาวุธ', top: 'เสื้อ', pants: 'ก
 function bPath() { return pathOf(JOB[B.job]); }
 function bPathJobs() { return bPath().filter((x) => x.tier > 0 || x.id === 'traveler'); }
 function bTotalSP() { return Math.max(0, B.jlv - 10); } // จากจอจริง: Job Lv24 → แต้มสกิล 14
-function bStatBudget() { return B.statBudget ?? (B.lv * 7); } // สมมติตามที่ผู้ใช้ขอ: 7 แต้ม/เลเวล → Lv 50 = 350 — ปรับเองได้
 function bStatSpent() { return B.statSpent ?? 0; }
-function costForNext(v) { return Math.ceil(v / 10) + 1; } // ต้นทุนขั้นบันได: ค่า 5→2, 15→3, 30→4, 62→8 (ตรงจอจริง)
+function bStatBudget() { return B.statBudget ?? (B.lv * 7); } // ตามที่ผู้ใช้ขอ: 7 แต้ม/เลเวล → Lv 50 = 350 — ปรับเองได้ (จอจริงใช้รวม ≈366+เหลือ 1 → งบจริงอาจ ≈367)
+function costForNext(v) { return 2 + Math.max(0, Math.ceil((v - 8) / 10)); } // จอจริง: ค่าฐาน 5→ใช้2, 15→3, 24→4, 62→8 — ขั้นเพิ่มที่ 9>10, 19>20, 29>30
+function bCostSteps(v, n) { let t = 0; for (let i = 0; i < n; i++) t += costForNext(v + i); return t; }
+function bStatBase(k) { return 5 + (B.stats[k] || 0); } // ค่าฐานก่อนบวกโบนัสอุปกรณ์ (เกมเริ่ม 5 ทุกค่า)
 function bCap() { return Math.min(80, Math.floor(30 + 0.55 * B.lv)); }
 function bEff(p) { const c = bCap(); return Math.min(p, c) + Math.max(0, p - c) * 0.4; }
 function bHPmul() { const t = D.buildHp || {}; let best = 1; for (const lv of Object.keys(t)) if (B.lv >= +lv) best = t[lv]; return best; }
@@ -911,31 +913,18 @@ function bEqStat(k) {
 function bRenderStats() {
   const box = $('#bStats');
   const budget = bStatBudget(), spent = bStatSpent(), left = Math.max(0, budget - spent);
-  const cap = bCap();
-  box.innerHTML = `<h3>สถานะ</h3><div class="hint">งบแต้ม (จากจอจริง: Lv 50 → 345) — <b>ปรับเองได้ด้านล่าง</b> · ต้นทุนอัป +1 แบบขั้นบันได (ที่ค่า 5 ใช้ 2 · ที่ 15 ใช้ 3 · ที่ 30 ใช้ 4 · ที่ 62 ใช้ 8) · ซอฟต์แคป ${cap} (เกินทำงาน 40%)</div>
-    <div class="strow" style="margin-bottom:6px"><span class="stn"><b>งบแต้มทั้งหมด</b> <small>(ปรับเอง)</small></span><button class="stbtn" data-budget="-25">−25</button><button class="stbtn" data-budget="-1">−1</button><b class="stv" id="bBudgetVal">${budget}</b><button class="stbtn" data-budget="1">+1</button><button class="stbtn" data-budget="25">+25</button><small class="hint">ใช้ไป <span id="bBudgetSpent">${spent}</span> · คงเหลือ <b style="color:var(--acc)" id="bBudgetLeft">${left}</b></small></div>
+  box.innerHTML = `<h3>สถานะ</h3><div class="hint">ต้นทุนอัป +1 แบบขั้นบันไดตามจอจริง — คิดจาก<b>ค่าฐาน</b> (ไม่รวมโบนัสเขียวจากอุปกรณ์): ค่า 5–8 ใช้ 2 · 9–18 ใช้ 3 · 19–28 ใช้ 4 · 29–38 ใช้ 5 · … · 59–68 ใช้ 8 (ขั้นเพิ่มที่ 9&gt;10, 19&gt;20, 29&gt;30 ตามจริง) · "อัปถัดไปใช้ N" เหมือนจอเกม · งบแต้ม = 7×เลเวล (Lv 50 = 350) — <b>ปรับเองได้</b> (จอจริงนักพราง Lv 50 ใช้รวม ≈366 เหลือ 1)</div>
+    <div class="strow" style="margin-bottom:6px"><span class="stn"><b>งบแต้มทั้งหมด</b> <small>(ปรับเอง)</small></span><button class="stbtn" data-budget="-5">−5</button><button class="stbtn" data-budget="-1">−1</button><b class="stv" id="bBudgetVal">${budget}</b><button class="stbtn" data-budget="1">+1</button><button class="stbtn" data-budget="5">+5</button><small class="hint">ใช้ไป <span id="bBudgetSpent">${spent}</span> · คงเหลือ <b style="color:var(--acc)" id="bBudgetLeft">${left}</b></small></div>
     ${Object.keys(STAT_TH).map((k) => {
-      const alloc = B.stats[k], eqB = Math.round(bEqStat(k) * 100) / 100;
-      const totalK = 5 + alloc;
-      const nextCost = costForNext(totalK);
       return `<div class="strow"><span class="stn">${k.toUpperCase()} <small>${esc(STAT_TH[k].split(' ')[0])}</small></span>
         <button class="stbtn" data-st="${k}" data-d="-5">−5</button><button class="stbtn" data-st="${k}" data-d="-1">−1</button>
-        <b class="stv ${totalK > cap ? 'over' : ''}" id="stv-${k}">${totalK}${eqB ? ' <span style="color:var(--grn)">+' + eqB + '</span>' : ''}</b>
+        <b class="stv" id="stv-${k}"></b>
         <button class="stbtn" data-st="${k}" data-d="1">+1</button><button class="stbtn" data-st="${k}" data-d="5">+5</button>
-        <small class="hint" id="next-${k}">ถัดไปใช้ ${nextCost}</small></div>`;
+        <small class="hint" id="next-${k}"></small></div>`;
     }).join('')}
     <button class="btn btn--sm btn--ghost" id="bResetStats" style="margin-top:6px">รีเซ็ตสถานะ</button>`;
-  /* อัปเดตเฉพาะจุด — ไม่ rebuild การ์ด (กัน handler ซ้ำ) */
   bStatsBindOnce();
-  bStatsBudgetUpdate();
   bStatsValueUpdate();
-}
-function bStatsBudgetUpdate() {
-  const budget = bStatBudget(), spent = bStatSpent(), left = Math.max(0, budget - spent);
-  const bv = $('#bBudgetVal'), bs = $('#bBudgetSpent'), bl = $('#bBudgetLeft');
-  if (bv) bv.textContent = budget;
-  if (bs) bs.textContent = spent;
-  if (bl) bl.textContent = left;
 }
 function bStatsValueUpdate() {
   const cap = bCap();
@@ -943,40 +932,43 @@ function bStatsValueUpdate() {
     const sv = $('#stv-' + k), nx = $('#next-' + k);
     if (!sv) return;
     const eqB = Math.round(bEqStat(k) * 100) / 100;
-    const totalK = 5 + B.stats[k];
+    const totalK = bStatBase(k);
     sv.innerHTML = `${totalK}${eqB ? ' <span style="color:var(--grn)">+' + eqB + '</span>' : ''}`;
-    sv.className = 'stv ' + (totalK > cap ? 'over' : '');
-    if (nx) nx.textContent = 'ถัดไปใช้ ' + costForNext(totalK);
+    sv.className = 'stv' + (totalK > cap ? ' over' : '');
+    if (nx) nx.textContent = 'อัปถัดไปใช้ ' + costForNext(totalK);
   });
-  bStatsBudgetUpdate();
+  const budget = bStatBudget(), spent = bStatSpent(), left = Math.max(0, budget - spent);
+  const bv = $('#bBudgetVal'), bs = $('#bBudgetSpent'), bl = $('#bBudgetLeft');
+  if (bv) bv.textContent = budget;
+  if (bs) bs.textContent = spent;
+  if (bl) bl.textContent = left;
 }
 function bStatsBindOnce() {
   const box = $('#bStats');
   if (box._bound) return;
   box._bound = true;
-  /* event delegation — ปุ่มถูกสร้างใหม่บ่อย ผูกครั้งเดียวบนการ์ดก็พอ */
   box.addEventListener('click', (e) => {
     if (!e.target.closest) return;
-    const ptsB = e.target.closest('[data-budget]');
-    if (ptsB) { B.statBudget = Math.max(22, bStatBudget() + (+ptsB.dataset.budget)); bStatsBudgetUpdate(); bCompute(); return; }
-    const stB = e.target.closest('[data-st]');
+    const ptsB = e.target.closest('button[data-budget]');
+    if (ptsB) { B.statBudget = Math.max(0, bStatBudget() + (+ptsB.dataset.budget)); bStatsValueUpdate(); bCompute(); return; }
+    const stB = e.target.closest('button[data-st]');
     if (stB) {
       const k = stB.dataset.st, d = +stB.dataset.d;
-      const totalK = 5 + B.stats[k];
       if (d > 0) {
-        const cost = costForNext(totalK) * d;
+        const cost = bCostSteps(bStatBase(k), d);
         if (bStatSpent() + cost > bStatBudget()) return;
         B.stats[k] += d; B.statSpent = bStatSpent() + cost;
       } else {
-        B.stats[k] = Math.max(0, B.stats[k] + d);
-        B.statSpent = Math.max(0, bStatSpent() - costForNext(5 + B.stats[k]) * Math.abs(d));
+        const n = Math.min(Math.abs(d), B.stats[k] || 0);
+        if (n <= 0) return;
+        const refund = bCostSteps(bStatBase(k) - n, n);
+        B.stats[k] -= n; B.statSpent = Math.max(0, bStatSpent() - refund);
       }
       bStatsValueUpdate(); bCompute();
       return;
     }
     if (e.target.closest('#bResetStats')) { B.stats = { str: 0, agi: 0, vit: 0, int: 0, dex: 0, luk: 0 }; B.statSpent = 0; bStatsValueUpdate(); bCompute(); }
   });
-  $('#bResetStats').onclick = () => { B.stats = { str: 0, agi: 0, vit: 0, int: 0, dex: 0, luk: 0 }; B.statSpent = 0; bStatsValueUpdate(); bCompute(); };
 }
 function bRenderSkills() {
   const box = $('#bSkills');
