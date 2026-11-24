@@ -185,10 +185,10 @@ function recStatsHtml(cat, j, lv) {
   const rec = STAT_REC[j.id] || STAT_REC[j.from] || STAT_REC.traveler;
   const prio = catPrio(rec, cat);
   const shares = cat === 'farm' ? [0.7, 0.2, 0.1] : cat === 'boss' ? [0.65, 0.25, 0.1] : [0.6, 0.25, 0.15];
-  const budget = lv * 7;
+  const budget = bStatBudgetTotal(lv);
   const al = recAllocate(prio, budget, shares);
   const used = al.reduce((s, a) => s + a.pts, 0);
-  return `<div class="skl"><b>🧭 สเตตัสแนะนำสายนี้ (Lv ${lv}):</b> ${al.map((a) => `<b>${a.k.toUpperCase()}</b> → ${a.to} <small>(${a.pts} แต้ม — ${STAT_WHY[a.k]})</small>`).join(' · ')}<br><small>งบ ≈ ${budget} แต้ม (สมมติ 7/เลเวล) · ต้นทุนขั้นบันไดตามจอจริง · เหลือ ${Math.max(0, budget - used)} แต้มให้ปรับเอง</small></div>`;
+  return `<div class="skl"><b>🧭 สเตตัสแนะนำสายนี้ (Lv ${lv}):</b> ${al.map((a) => `<b>${a.k.toUpperCase()}</b> → ${a.to} <small>(${a.pts} แต้ม — ${STAT_WHY[a.k]})</small>`).join(' · ')}<br><small>งบ ≈ ${budget} แต้ม (สูตรแต้มต่อเลเวลจากข้อมูลจริง) · ต้นทุนขั้นบันไดตามจอจริง · เหลือ ${Math.max(0, budget - used)} แต้มให้ปรับเอง</small></div>`;
 }
 function lineWeaponPick(lineSkillIds) {
   const ws = D.weapons.filter((w) => w.wsk && w.wsk.some((b) => b[1] === cur.job.id && lineSkillIds.has(b[0])));
@@ -942,7 +942,15 @@ function bPath() { return pathOf(JOB[B.job]); }
 function bPathJobs() { return bPath().filter((x) => x.tier > 0 || x.id === 'traveler'); }
 function bTotalSP() { return Math.max(0, B.jlv - 10); } // จากจอจริง: Job Lv24 → แต้มสกิล 14
 function bStatSpent() { return B.statSpent ?? 0; }
-function bStatBudget() { return B.statBudget ?? (B.lv * 7); } // ตามที่ผู้ใช้ขอ: 7 แต้ม/เลเวล → Lv 50 = 350 — ปรับเองได้ (จอจริงใช้รวม ≈366+เหลือ 1 → งบจริงอาจ ≈367)
+function bStatBudgetTotal(lv) {
+  // จากข้อมูลจริง: Lv50 รวม 367 (ใช้ 366 + เหลือ 1) · อัป 50→51 ได้ +13 (เหลือ 1→14)
+  // แบบจำลอง: ได้ floor(lv/4)+1 ต่อเลเวล (Lv51 → +13) + โบนัสเริ่มต้น 17 → ตรงจอจริงทั้งสองจุด (Lv50 = 367, Lv51 = 380)
+  let total = 17;
+  for (let l = 1; l <= lv; l++) total += Math.floor(l / 4) + 1;
+  return total;
+}
+function bStatBudget() { return B.statBudget ?? bStatBudgetTotal(B.lv); }
+function bStatGainAt(lv) { return Math.floor(lv / 4) + 1; } // แต้มที่ได้ตอนอัปเข้าเลเวลนี้
 function costForNext(v) { return 2 + Math.max(0, Math.ceil((v - 8) / 10)); } // จอจริง: ค่าฐาน 5→ใช้2, 15→3, 24→4, 62→8 — ขั้นเพิ่มที่ 9>10, 19>20, 29>30
 function bCostSteps(v, n) { let t = 0; for (let i = 0; i < n; i++) t += costForNext(v + i); return t; }
 function bStatBase(k) { return 5 + (B.stats[k] || 0); } // ค่าฐานก่อนบวกโบนัสอุปกรณ์ (เกมเริ่ม 5 ทุกค่า)
@@ -967,7 +975,7 @@ function bEqStat(k) {
 function bRenderStats() {
   const box = $('#bStats');
   const budget = bStatBudget(), spent = bStatSpent(), left = Math.max(0, budget - spent);
-  box.innerHTML = `<h3>สถานะ</h3><div class="hint">ต้นทุนอัป +1 แบบขั้นบันไดตามจอจริง — คิดจาก<b>ค่าฐาน</b> (ไม่รวมโบนัสเขียวจากอุปกรณ์): ค่า 5–8 ใช้ 2 · 9–18 ใช้ 3 · 19–28 ใช้ 4 · 29–38 ใช้ 5 · … · 59–68 ใช้ 8 (ขั้นเพิ่มที่ 9&gt;10, 19&gt;20, 29&gt;30 ตามจริง) · "อัปถัดไปใช้ N" เหมือนจอเกม · งบแต้ม = 7×เลเวล (Lv 50 = 350) — <b>ปรับเองได้</b> (จอจริงนักพราง Lv 50 ใช้รวม ≈366 เหลือ 1)</div>
+  box.innerHTML = `<h3>สถานะ</h3><div class="hint">ต้นทุนอัป +1 แบบขั้นบันไดตามจอจริง — คิดจาก<b>ค่าฐาน</b> (ไม่รวมโบนัสเขียวจากอุปกรณ์): ค่า 5–8 ใช้ 2 · 9–18 ใช้ 3 · 19–28 ใช้ 4 · 29–38 ใช้ 5 · … · 59–68 ใช้ 8 (ขั้นเพิ่มที่ 9&gt;10, 19&gt;20, 29&gt;30 ตามจริง) · "อัปถัดไปใช้ N" เหมือนจอเกม · งบแต้มจากข้อมูลจริง: <b>อัปเข้าเลเวล L ได้ floor(L÷4)+1</b> (Lv51 → +13) + โบนัสเริ่มต้น 17 → Lv 50 รวม <b>367</b>, Lv 51 รวม <b>380</b> (ตรงจอจริงทั้งสองจุด) — <b>ปรับเองได้</b> · อัปเข้าเลเวลนี้ได้ <b>${bStatGainAt(B.lv + 1)}</b> แต้ม</div>
     <div class="strow" style="margin-bottom:6px"><span class="stn"><b>งบแต้มทั้งหมด</b> <small>(ปรับเอง)</small></span><button class="stbtn" data-budget="-5">−5</button><button class="stbtn" data-budget="-1">−1</button><b class="stv" id="bBudgetVal">${budget}</b><button class="stbtn" data-budget="1">+1</button><button class="stbtn" data-budget="5">+5</button><small class="hint">ใช้ไป <span id="bBudgetSpent">${spent}</span> · คงเหลือ <b style="color:var(--acc)" id="bBudgetLeft">${left}</b></small></div>
     ${Object.keys(STAT_TH).map((k) => {
       return `<div class="strow"><span class="stn">${k.toUpperCase()} <small>${esc(STAT_TH[k].split(' ')[0])}</small></span>
