@@ -1372,13 +1372,11 @@ function initComboDelegation() {
     bar.textContent = '⚠ PROMISE ERROR: ' + (e.reason && e.reason.message ? e.reason.message : e.reason);
     bar.style.display = 'block';
   });
-  if (window.__comboDelegation) return;
-  window.__comboDelegation = true;
-  /* เปิดแผงได้เฉพาะเมื่อ "กดเอง" (armed) — focusin จากการ rebuild/restore จะไม่เปิดแผง */
+  /* เลือกรายการทันทีที่กด (mousedown) — ตัดปัญหาลำดับ event / focus ออกทั้งหมด */
   document.addEventListener('mousedown', (e) => {
     if (!e.target.closest) return;
     const it = e.target.closest('.comboitem');
-    if (it) return; // กำลังจะเลือกรายการ — ห้ามปิดแผง (รอ click เลือก)
+    if (it) { comboPick(it); e.preventDefault(); return; } // เลือกทันที + กัน focus ย้าย
     const inp = e.target.closest('.comboinput');
     if (inp) {
       const wrap = inp.closest('.scombo');
@@ -1410,7 +1408,7 @@ function initComboDelegation() {
   });
   document.addEventListener('click', (e) => {
     const it = e.target.closest && e.target.closest('.comboitem');
-    if (it) { comboPick(it); return; }
+    if (it) return; // เลือกที่ mousedown แล้ว
     const inp = e.target.closest && e.target.closest('.comboinput');
     if (inp) return;
     // คลิกพื้นที่แผงเปล่า หรือที่อื่น ๆ → ปิดทั้งหมด
