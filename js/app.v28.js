@@ -1276,7 +1276,12 @@ function bRenderAll() {
   bRenderStats(); bRenderSkills(); bRenderEquip(); bCompute();
 }
 function bInit() {
-  bJob.innerHTML = D.jobs.map((j) => `<option value="${j.id}" ${j.id === B.job ? 'selected' : ''}>${esc(j.n)}</option>`).join('');
+  bJob.innerHTML = D.jobs.filter((j) => j.tier === 0).map((j) => `<option value="${j.id}" ${j.id === B.job ? 'selected' : ''}>${esc(j.n)}</option>`).join('') +
+    D.jobs.filter((j) => j.tier === 1).map((root) => {
+      const opts = [root];
+      D.jobs.filter((x) => x.from === root.id).forEach((k) => { opts.push(k); D.jobs.filter((x) => x.from === k.id).forEach((g) => opts.push(g)); });
+      return `<optgroup label="${esc(root.n)}">${opts.map((x) => `<option value="${x.id}" ${x.id === B.job ? 'selected' : ''}>${'　'.repeat(Math.max(0, x.tier - 1))}${x.tier === 3 ? '⭐ ' : ''}${esc(x.n)}</option>`).join('')}</optgroup>`;
+    }).join('');
   bJob.onchange = () => { B.job = bJob.value; B.skills = {}; B.eq = { weapon: '', top: '', pants: '', hat: '', acc: '', robe: '', glasses: '', shield: '' }; B.ref = { weapon: 0, top: 0, pants: 0, hat: 0, acc: 0, robe: 0, glasses: 0, shield: 0 }; B.opt = { weapon: [], top: [], pants: [], hat: [], acc: [], robe: [], glasses: [], shield: [] }; B.otier = {}; bRenderAll(); };
   bLv.oninput = () => { B.lv = +bLv.value; bRenderAll(); };
   bJobLv.oninput = () => { B.jlv = +bJobLv.value; bRenderAll(); };
