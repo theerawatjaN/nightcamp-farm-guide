@@ -887,7 +887,7 @@ const SLOT_TH = { weapon: 'อาวุธ', top: 'เสื้อ', pants: 'ก
 function bPath() { return pathOf(JOB[B.job]); }
 function bPathJobs() { return bPath().filter((x) => x.tier > 0 || x.id === 'traveler'); }
 function bTotalSP() { return Math.max(0, B.jlv - 10); } // จากจอจริง: Job Lv24 → แต้มสกิล 14
-function bStatBudget() { return B.statBudget ?? Math.round(B.lv * 6.6); } // สมมติจากจอจริง: Lv50 → ≈330 (คำนวณย้อนกลับจาก STR 62 + AGI 30 + VIT 15) — ปรับเองได้
+function bStatBudget() { return B.statBudget ?? (B.lv * 6 + Math.floor(B.lv / 10)); } // สมมติจากจอจริง: 6/เลเวล + โบนัส 1 ต่อ 10 เลเวล → Lv50 = 305 (STR62+AGI30+VIT15+เหลือ1 พอดี) — ปรับเองได้
 function bStatSpent() { return B.statSpent ?? 0; }
 function costForNext(v) { return Math.ceil(v / 10) + 1; } // ต้นทุนขั้นบันได: ค่า 5→2, 15→3, 30→4, 62→8 (ตรงจอจริง)
 function bCap() { return Math.min(80, Math.floor(30 + 0.55 * B.lv)); }
