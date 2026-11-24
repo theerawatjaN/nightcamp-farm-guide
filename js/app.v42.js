@@ -1360,21 +1360,38 @@ function comboPick(item) {
 function initComboDelegation() {
   if (window.__comboDelegation) return;
   window.__comboDelegation = true;
+  /* เปิดแผงได้เฉพาะเมื่อ "กดเอง" (armed) — focusin จากการ rebuild/restore จะไม่เปิดแผง */
+  document.addEventListener('mousedown', (e) => {
+    if (!e.target.closest) return;
+    const it = e.target.closest('.comboitem');
+    if (it) return; // กำลังจะเลือกรายการ — ห้ามปิดแผง (รอ click เลือก)
+    const inp = e.target.closest('.comboinput');
+    if (inp) {
+      const wrap = inp.closest('.scombo');
+      const panel = wrap.querySelector('.comborow');
+      const wasOpen = !panel.classList.contains('hidden');
+      comboCloseAllExcept(wrap); // กด dropdown ไหน → ปิดอันอื่นก่อนเสมอ
+      if (!wasOpen) { try { comboRender(wrap, ''); } catch (err) {} } // กดซ้ำที่อันเดิมที่เปิดอยู่ → ปิด (toggle)
+      window.__armedCombo = wasOpen ? null : wrap;
+      return;
+    }
+    const row = e.target.closest('.comborow');
+    if (row) { comboCloseAll(); window.__armedCombo = null; return; } // กดพื้นแผงเปล่า → ปิดเลย
+    comboCloseAll(); // กดที่อื่น → ปิดทั้งหมด
+    window.__armedCombo = null;
+  });
   document.addEventListener('focusin', (e) => {
     const inp = e.target.closest && e.target.closest('.comboinput');
-    if (!inp) { comboCloseAll(); return; }
-    // เพิ่งเลือกรายการเสร็จ (ป้องกัน label activation เปิดซ้ำ)
-    if (Date.now() - (window.__lastComboPick || 0) < 150) return;
+    if (!inp) { comboCloseAll(); window.__armedCombo = null; return; }
     const wrap = inp.closest('.scombo');
-    const panel = wrap.querySelector('.comborow');
-    const wasOpen = !panel.classList.contains('hidden');
-    comboCloseAll(); // ปิดอื่นก่อนเสมอ
-    if (!wasOpen) { try { comboRender(wrap, ''); } catch (err) {} } // กดซ้ำที่อันเดิมที่เปิดอยู่ → ปิด (toggle)
+    // เปิดเฉพาะเมื่อเพิ่งกด (armed) — ไม่เช่นนั้น (rebuild/restore focus) ไม่เปิด
+    if (window.__armedCombo === wrap) { window.__armedCombo = null; try { comboRender(wrap, ''); } catch (err) {} }
+    else comboCloseAll();
   });
   document.addEventListener('input', (e) => {
     if (e.target.classList && e.target.classList.contains('comboinput')) {
-      comboCloseAllExcept(e.target.closest('.scombo')); // พิมพ์ที่ไหน → ปิดอื่นก่อน
-      try { comboRender(e.target.closest('.scombo'), e.target.value); } catch (err) {}
+      const wrap = e.target.closest('.scombo');
+      try { comboRender(wrap, e.target.value); } catch (err) {}
     }
   });
   document.addEventListener('click', (e) => {
@@ -1384,16 +1401,6 @@ function initComboDelegation() {
     if (inp) return;
     // คลิกพื้นที่แผงเปล่า หรือที่อื่น ๆ → ปิดทั้งหมด
     comboCloseAll();
-  });
-  document.addEventListener('mousedown', (e) => {
-    if (!e.target.closest) return;
-    const it = e.target.closest('.comboitem');
-    if (it) return; // กำลังจะเลือกรายการ — ห้ามปิดแผง (รอ click เลือก)
-    const inp = e.target.closest('.comboinput');
-    if (inp) { comboCloseAllExcept(inp.closest('.scombo')); return; } // กด dropdown ไหน → ปิดอันอื่นก่อนเสมอ
-    const row = e.target.closest('.comborow');
-    if (row) { comboCloseAll(); return; } // กดพื้นแผงเปล่า → ปิดเลย
-    comboCloseAll(); // กดที่อื่น → ปิดทั้งหมด
   });
   window.addEventListener('scroll', (e) => {
     if (e.target && e.target.classList && e.target.classList.contains('comborow')) return; // เลื่อนในแผงตัวเอง
