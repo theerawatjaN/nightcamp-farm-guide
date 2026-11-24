@@ -195,5 +195,5 @@ const data = {
 
 const out = 'window.NC_DATA = ' + JSON.stringify(data) + ';';
 fs.mkdirSync(path.join(root, 'js'), { recursive: true });
-fs.writeFileSync(path.join(root, 'js/data.v20.js'), out);
+fs.writeFileSync(path.join(root, 'js/data.v21.js'), out);
 console.log('written js/data.js', (out.length / 1e6).toFixed(2), 'MB ·', weapons.length, 'weapons ·', monsters.length, 'monsters ·', maps.length, 'maps ·', sets.length, 'sets ·', runes.length, 'runes');

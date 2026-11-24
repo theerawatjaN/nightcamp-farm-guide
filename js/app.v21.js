@@ -88,7 +88,7 @@ function openJob(id) {
   cur.job = j; cur.path = pathOf(j); cur.wts = wtsOf(j);
   cur.skillIds = new Set(cur.path.flatMap((x) => x.sk.map((s) => s.id)));
   gWt.value = ''; gEl.value = ''; $('#gOnlyWsk').checked = false;
-  drawJobHead(); drawLines(); drawBuilds(); drawWeapons(); drawMaps(); drawSets(); drawSimSelectors(); drawSim();
+  drawJobHead(); drawLines(); drawBuilds(); drawWeapons(); drawMaps(); drawMonCards(); drawSets(); drawSimSelectors(); drawSim();
 }
 
 function drawJobHead() {
@@ -290,40 +290,31 @@ function drawLines() {
 /* --- all weapons sorted by level (การ์ดทุกใบ ไฮไลต์เฉพาะอาชีพ) --- */
 function drawWeapons() {
   const onlyWsk = $('#gOnlyWsk').checked, ft = gWt.value, fe = gEl.value;
-  let ws = D.weapons.slice(); // ทุกใบ — ของอาชีพอื่นเป็นสีเทา
+  let ws = D.weapons.filter((w) => cur.wts.includes(w.wt)); // เฉพาะอาวุธของอาชีพที่เลือก
   if (ft) ws = ws.filter((w) => w.wt === ft);
   if (fe) ws = ws.filter((w) => w.el === fe);
   if (onlyWsk) ws = ws.filter((w) => w.wsk && w.wsk.some((b) => b[1] === cur.job.id));
-  ws.sort((a, b) => (cur.wts.includes(b.wt) - cur.wts.includes(a.wt)) || a.lv - b.lv || (b.atk - a.atk));
+  ws.sort((a, b) => a.lv - b.lv || (b.atk - a.atk));
   const lv = +gLv.value;
-  const KR = { L: 0, B: 1, C: 2, D: 3 };
   const stars = new Set();
   for (const wt of cur.wts) {
     const pool = ws.filter((w) => w.wt === wt);
-    const usable = pool.filter((w) => w.lv <= lv);
-    const pick = (usable.length ? usable : pool).slice().sort((a, b) => {
-      const aW = (a.wsk || []).some((x) => x[1] === cur.job.id) ? 1 : 0, bW = (b.wsk || []).some((x) => x[1] === cur.job.id) ? 1 : 0;
-      return bW - aW || (KR[a.k ?? 9] - KR[b.k ?? 9]) || b.atk - a.atk;
-    })[0];
+    const pick = bestWeaponFor(pool, lv, gModeVal);
     if (pick) stars.add(pick.id);
   }
-  $('#gWeaponsBox').innerHTML = `<p class="hint">🎨 การ์ดสี = ใช้ได้กับ ${esc(cur.job.n)} · เทา = อาชีพอื่น · ⭐ = แนะนำโหมด${({ farm: 'ฟาร์ม', pvp: 'PvP', boss: 'ล่าบอส' })[gModeVal]} ที่ Lv ${lv} · กดการ์ดเพื่อดูแหล่งดรอป</p><div class="cardgrid">` + ws.map((w) => {
-    const jobOk = cur.wts.includes(w.wt);
-    const star = jobOk && stars.has(w.id);
-    const ic = aiHtml('items', w.id, 46) || `<span style="font-size:1.6rem">${WTICON[w.wt] || '🗡️'}</span>`;
-    return `<div class="wcard ${jobOk ? 'ok' : 'dim'} ${star ? 'star' : ''}" data-item="${w.id}" title="${esc(w.n)} — กดดูแหล่งดรอป">
-      <span class="wlv">Lv ${w.lv}</span>${star ? '<span class="wstar">⭐</span>' : ''}
-      <span class="wic">${ic}</span>
-      <span class="wnm">${esc(w.n)}</span>
-      <span class="wsub">ATK ${w.atk} · ${ELICON[w.el] || ''}</span>
-    </div>`;
-  }).join('') + '</div>' || '<p class="hint">ไม่พบอาวุธตามเงื่อนไข</p>';
+  $('#gWeaponsBox').innerHTML = `<p class="hint">⭐ = อาวุธแนะนำโหมด${({ farm: 'ฟาร์ม', pvp: 'PvP', boss: 'ล่าบอส' })[gModeVal]}ที่ Lv ${lv} · กดการ์ดเพื่อดูแหล่งดรอป</p>` + ws.map((w) => {
+    const wsk = w.wsk && w.wsk.find((b) => b[1] === cur.job.id);
+    let c = wepCard(w, wsk);
+    if (stars.has(w.id)) c = c.replace('<div class="nm"', `<span class="tag r-legend" style="margin-left:6px">⭐ แนะนำ Lv ${lv}</span><div class="nm"`);
+    return c;
+  }).join('') || '<p class="hint">ไม่พบอาวุธตามเงื่อนไข</p>';
 }
 [gWt, gEl].forEach((x) => x.addEventListener('change', drawWeapons));
 $('#gOnlyWsk').addEventListener('change', drawWeapons);
-gLv.addEventListener('input', () => { gLvN.textContent = gLv.value; drawMaps(); drawWeapons(); drawLines(); drawSim(); });
+gLv.addEventListener('input', () => { gLvN.textContent = gLv.value; drawMaps(); drawWeapons(); drawLines(); drawMonCards(); drawSim(); });
 const gMode = $('#gMode');
-if (gMode) gMode.addEventListener('change', () => { gModeVal = gMode.value; drawWeapons(); drawLines(); drawBuilds(); drawMaps(); drawSim(); });
+if (gMode) gMode.addEventListener('change', () => { gModeVal = gMode.value; drawWeapons(); drawLines(); drawBuilds(); drawMaps(); drawMonCards(); drawSim(); });
+$('#simWeapon').addEventListener('change', () => { drawMonCards(); });
 
 /* --- farm maps per bracket --- */
 function bestMaps(charLv, weaponEl, count) {
@@ -1167,6 +1158,28 @@ function bCompute() {
     </div>
     <div class="note" style="margin-top:8px">เพดาน (จำกัด) มาจากข้อมูลออฟของวิกิ · แถวที่ยังไม่มีออฟจะขึ้น – · สูตรสเตตัสจากวิกิ (สเตตัส&อาวุธ) ส่วนค่าฐาน HP/SP/HIT/FLEE/ฟื้นอัตโนมัติ เป็นการประมาณ · ATK รูปแบบ "ฐาน + อาวุธ ×คูณตีบวก" ตามหน้าจอเกม</div>`;
   bRenderPreview();
+}
+
+/* --- การ์ดมอนเตอร์ (กริดแบบเกม) --- */
+function drawMonCards() {
+  const lv = +gLv.value;
+  const w = D.weapons.find((x) => x.id === $('#simWeapon').value) || null;
+  const wEl = w ? w.el : ((cur.job.sk.find((s) => s.el) || {}).el || 'neutral');
+  const picks = bestMaps(lv, wEl, 6);
+  const okMonIds = new Set();
+  picks.forEach((p) => p.m.mons.forEach((mn) => okMonIds.add(mn.id)));
+  const starIds = new Set(((picks[0] || {}).best || []).slice(0, 3).map((mn) => mn.id));
+  const list = D.monsters.slice().sort((a, b) => (okMonIds.has(b.id) - okMonIds.has(a.id)) || a.lv - b.lv);
+  $('#gMonBox').innerHTML = `<p class="hint">🎨 การ์ดสี = มอนในแมพแนะนำของ ${esc(cur.job.n)} ที่ Lv ${lv}${wEl ? ' (ธาตุ ' + EL.th(wEl) + ')' : ''} · ⭐ = เป้าหมายแนะนำ 3 ตัวแรกของแมพเด่น · เทา = มอนอื่น ๆ · กดการ์ดเพื่อดูดรอป</p><div class="cardgrid">` +
+    list.map((m) => {
+      const ok = okMonIds.has(m.id), star = starIds.has(m.id);
+      return `<div class="wcard ${ok ? 'ok' : 'dim'} ${star ? 'star' : ''}" data-item="${m.id}" title="${esc(m.n)} — กดดูดรอป">
+        <span class="wlv">Lv ${m.lv}</span>${star ? '<span class="wstar">⭐</span>' : ''}
+        <span class="wic">${aiHtml('mons', m.id, 46) || (m.boss ? '👑' : ELICON[m.el])}</span>
+        <span class="wnm">${esc(m.n)}</span>
+        <span class="wsub">${ELICON[m.el] || ''}${m.boss ? ' 👑' : ''}</span>
+      </div>`;
+    }).join('') + '</div>';
 }
 
 /* render build page */
