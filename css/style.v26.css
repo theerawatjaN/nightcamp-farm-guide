@@ -152,6 +152,8 @@ table.src th{color:var(--tx2);font-weight:600}
 .wnm{display:block;font-size:.66rem;font-weight:700;line-height:1.25;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .wsub{display:block;font-size:.58rem;color:var(--tx2)}
 
+.pcs-icons{display:flex;gap:6px;flex-wrap:wrap;margin:4px 0}
+.pcic{display:inline-flex;align-items:center;justify-content:center;width:42px;height:42px;background:var(--bg2);border:1px solid var(--line);border-radius:8px}
 .gearui{display:grid;grid-template-columns:1fr minmax(200px,240px) 1fr;gap:10px;align-items:start}
 @media(max-width:760px){.gearui{grid-template-columns:1fr 1fr}.gearcenter{grid-column:1/-1;order:-1}}
 .gearcol{display:flex;flex-direction:column;gap:8px}

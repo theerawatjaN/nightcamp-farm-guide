@@ -488,6 +488,7 @@ function renderDb() {
     dbFilters.innerHTML = `<label class="sel"><span>สายเกราะ</span><select id="fKind"><option value="">ทั้งหมด</option>${['hv', 'lt', 'mg', 'rg'].map((l) => `<option value="${l}" ${dbState.kind === l ? 'selected' : ''}>${LINE_TH[l]}</option>`).join('')}</select></label>`;
     const list = D.sets.filter((s) => (!dbState.kind || s.line === dbState.kind) && matches(q, s.n, s.id, s.pcs.map((p) => p.n).join(' '), s.b2, s.b3, s.pas)).sort((a, b) => a.lv - b.lv);
     dbBox.innerHTML = list.map((s) => `<div class="card setc" data-item="set:${s.id}"><h3>${esc(s.n)} <span class="pill">Lv ${s.lv}</span><span class="pill">${LINE_TH[s.line] || s.line}</span></h3>
+      <div class="pcs-icons">${s.pcs.map((p) => `<span class="pcic" title="${esc(p.n)}">${pieceIcon(p.id, 36)}</span>`).join('')}</div>
       <div class="pcs">${s.pcs.map((p) => `<span class="pill">${esc(p.n)}</span>`).join('')}</div>
       <div class="bonus">2 ชิ้น: <b>${esc(s.b2)}</b> · 3 ชิ้น: <b>${esc(s.b3)}</b>${s.pas ? ' · เซ็ตเต็ม: <b>' + esc(s.pas) + '</b>' : ''}</div>
       ${setSrcTable(s)}</div>`).join('') || empty();
@@ -497,7 +498,7 @@ function renderDb() {
     dbFilters.innerHTML = `<label class="sel"><span>ช่อง</span><select id="fKind">${['top', 'pants', 'robe', 'cape', 'hat', 'glasses', 'shield', 'acc'].map((s) => `<option value="${s}" ${dbState.kind === s ? 'selected' : ''}>${slotTh(s)}</option>`).join('')}</select></label>`;
     const list = D.armors.filter((a) => (!dbState.kind || a.s === dbState.kind) && matches(q, a.n, a.id, a.d, a.ab));
     list.sort((a, b) => a.lv - b.lv);
-    dbBox.innerHTML = list.map((a) => `<div class="wep" data-item="${a.id}"><div class="ic">${slotIcon(a.s)}</div>
+    dbBox.innerHTML = list.map((a) => `<div class="wep" data-item="${a.id}"><div class="ic">${a.s === 'hat' ? (aiHat(a.id, 40) || aiHtml('items', a.id, 40) || slotIcon(a.s)) : (aiHtml('items', a.id, 40) || slotIcon(a.s))}</div>
       <div class="nm" style="flex:1"><b>${esc(a.n)}</b>${rTag(a.r)}<small>${slotTh(a.s)} · Lv ${a.lv}${a.set ? ' · ชุด: ' + esc((D.sets.find((s) => s.id === a.set) || {}).n || '') : ''}</small>
       ${statHtml(a.st)} ${a.ab ? `<small>${esc(a.ab)}</small>` : ''} ${srcHtml(a.src)}</div></div>`).join('') || empty();
     dbCount.textContent = 'พบ ' + list.length + ' ชิ้น';
@@ -666,7 +667,7 @@ function openModal(id) {
     B.innerHTML = `<h2>🃏 รูน${esc(r.n.replace(/^รูน/, ''))}</h2><table class="src"><tr><th>มอนที่ดรอป</th><th>เลเวล</th><th>โอกาส</th><th>แมพ · เขต</th></tr>${r.droppers.map((d) => d.maps.map((m, i) => `<tr>${i === 0 ? `<td rowspan="${d.maps.length}">${esc(d.monN)}</td><td rowspan="${d.maps.length}">${d.lv}</td><td rowspan="${d.maps.length}">${pct(d.chance)}</td>` : ''}<td>${esc(m.n)} · ${esc(m.region)}</td></tr>`).join('')).join('')}</table>`;
   } else if (id.startsWith('set:')) {
     const s = D.sets.find((x) => x.id === id.slice(4));
-    B.innerHTML = `<h2>${esc(s.n)}</h2><div class="kv"><dt>สาย</dt><dd>${LINE_TH[s.line] || s.line} · Lv ${s.lv}</dd><dt>ชิ้นส่วน</dt><dd>${s.pcs.map((p) => esc(p.n)).join(' + ')}</dd><dt>โบนัส 2 ชิ้น</dt><dd>${esc(s.b2)}</dd><dt>โบนัส 3 ชิ้น</dt><dd>${esc(s.b3)}</dd><dt>พาสซีฟเซ็ตเต็ม</dt><dd>${esc(s.pas) || '–'}</dd></div>${setSrcTable(s)}`;
+    B.innerHTML = `<h2>${esc(s.n)}</h2><div class="pcs-icons">${s.pcs.map((p) => `<span class="pcic" title="${esc(p.n)}">${pieceIcon(p.id, 40)}</span>`).join('')}</div><div class="kv"><dt>สาย</dt><dd>${LINE_TH[s.line] || s.line} · Lv ${s.lv}</dd><dt>ชิ้นส่วน</dt><dd>${s.pcs.map((p) => esc(p.n)).join(' + ')}</dd><dt>โบนัส 2 ชิ้น</dt><dd>${esc(s.b2)}</dd><dt>โบนัส 3 ชิ้น</dt><dd>${esc(s.b3)}</dd><dt>พาสซีฟเซ็ตเต็ม</dt><dd>${esc(s.pas) || '–'}</dd></div>${setSrcTable(s)}`;
   } else {
     const w = D.weapons.find((x) => x.id === id), a = w ? null : D.armors.find((x) => x.id === id), m = MON[id], mp = MAP[id];
     if (w) {
@@ -735,6 +736,7 @@ function matDroppers(mid, topN) {
   }
   return out.sort((a, b) => b.chance - a.chance).slice(0, topN || 5);
 }
+const pieceIcon = (pid, size = 34) => (pid.startsWith('hat') ? (aiHat(pid, size) || aiHtml('items', pid, size)) : (aiHtml('items', pid, size) || '📦'));
 function renderForge() {
   const q = forgeQ.value.trim();
   if (forgeTab === 'howto') {
