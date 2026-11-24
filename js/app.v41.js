@@ -1387,10 +1387,12 @@ function initComboDelegation() {
   });
   document.addEventListener('mousedown', (e) => {
     if (!e.target.closest) return;
+    const it = e.target.closest('.comboitem');
+    if (it) return; // กำลังจะเลือกรายการ — ห้ามปิดแผง (รอ click เลือก)
     const inp = e.target.closest('.comboinput');
     if (inp) { comboCloseAllExcept(inp.closest('.scombo')); return; } // กด dropdown ไหน → ปิดอันอื่นก่อนเสมอ
     const row = e.target.closest('.comborow');
-    if (row && !e.target.closest('.comboitem')) { comboCloseAll(); return; } // กดพื้นแผงเปล่า → ปิดเลย
+    if (row) { comboCloseAll(); return; } // กดพื้นแผงเปล่า → ปิดเลย
     comboCloseAll(); // กดที่อื่น → ปิดทั้งหมด
   });
   window.addEventListener('scroll', (e) => {
