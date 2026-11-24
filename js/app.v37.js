@@ -1315,6 +1315,15 @@ function comboLabel(sel) {
   for (const ch of sel.children) { if (ch.tagName === 'OPTGROUP' && Array.from(ch.children).includes(o)) { g = ch.label || ''; break; } }
   return (g ? g + ' › ' : '') + o.textContent.trim();
 }
+function comboCloseAllExcept(keepWrap) {
+  document.querySelectorAll('.scombo').forEach((wrap) => {
+    if (wrap === keepWrap) return;
+    try {
+      const panel = wrap.querySelector('.comborow');
+      if (panel) panel.classList.add('hidden');
+    } catch (err) {}
+  });
+}
 function comboRender(wrap, q) {
   const sel = wrap.querySelector('select');
   const panel = wrap.querySelector('.comborow');
@@ -1329,10 +1338,13 @@ function comboRender(wrap, q) {
 }
 function comboCloseAll() {
   document.querySelectorAll('.scombo').forEach((wrap) => {
-    wrap.querySelector('.comborow').classList.add('hidden');
-    const sel = wrap.querySelector('select');
-    const btn = wrap.querySelector('.comboinput');
-    if (btn) btn.value = comboLabel(sel);
+    try {
+      const panel = wrap.querySelector('.comborow');
+      if (panel) panel.classList.add('hidden');
+      const sel = wrap.querySelector('select');
+      const btn = wrap.querySelector('.comboinput');
+      if (btn && sel) btn.value = comboLabel(sel);
+    } catch (err) { /* กันกรณี DOM ถูกสร้างใหม่ระหว่างทำงาน */ }
   });
 }
 function comboPick(item) {
@@ -1364,8 +1376,16 @@ function initComboDelegation() {
     comboCloseAll();
   });
   document.addEventListener('mousedown', (e) => {
-    const row = e.target.closest && e.target.closest('.comborow');
-    if (row && !e.target.closest('.comboitem')) comboCloseAll(); // กดพื้นแผงเปล่า → ปิดเลย
+    if (!e.target.closest) return;
+    const inp = e.target.closest('.comboinput');
+    if (inp) { comboCloseAllExcept(inp.closest('.scombo')); return; } // กด dropdown ไหน → ปิดอันอื่นก่อนเสมอ
+    const row = e.target.closest('.comborow');
+    if (row && !e.target.closest('.comboitem')) { comboCloseAll(); return; } // กดพื้นแผงเปล่า → ปิดเลย
+    comboCloseAll(); // กดที่อื่น → ปิดทั้งหมด
+  });
+  document.addEventListener('focusin', (e) => {
+    const inp = e.target.closest && e.target.closest('.comboinput');
+    if (inp) { try { comboRender(inp.closest('.scombo'), ''); } catch (err) {} }
   });
   window.addEventListener('scroll', (e) => {
     if (e.target && e.target.classList && e.target.classList.contains('comborow')) return; // เลื่อนในแผงตัวเอง
