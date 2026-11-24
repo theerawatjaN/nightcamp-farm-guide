@@ -57,7 +57,7 @@ function srcHtml(src) {
 }
 
 /* ---------- router ---------- */
-const pages = ['guide', 'db', 'forge', 'build', 'plan'];
+const pages = ['build', 'guide', 'db', 'forge', 'plan'];
 $('#tabs').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; showPage(b.dataset.page); });
 function showPage(p) {
   pages.forEach((x) => { $('#page-' + x).classList.toggle('on', x === p); });
@@ -625,7 +625,7 @@ function openModal(id) {
       const usedIn = [];
       D.craft.forEach((c) => c.list.forEach((x) => { if ((x.mats || []).some((m2) => m2.id === mid)) usedIn.push(x.n); }));
       const best = droppers.length ? droppers[0].chance : 0;
-      $('#modalBody').innerHTML = `<h2>${esc(mt.n)}</h2>
+      $('#modalBody').innerHTML = `<h2>${aiHtml('mats', mid, 40) || ''} ${esc(mt.n)}</h2>
         <div class="kv">
           <dt>รายละเอียด</dt><dd>${esc(mt.d) || '–'}</dd>
           <dt>ราคาขาย</dt><dd>${mt.p ? mt.p.toLocaleString() + ' เหรียญ' : '–'}${mt.rare ? ' · หายาก' : ''}</dd>
@@ -726,7 +726,7 @@ const GRADE_TH = ['เกรด 1', 'เกรด 2', 'เกรด 3', 'เก�
 function matChip(mid, label) {
   const mt = D.materials.find((x) => x.id === mid);
   if (!mt && !label) return '';
-  return `<span class="pill matlink" data-item="mat:${mid}" style="cursor:pointer" title="กดดูแหล่งที่ได้">${esc(label || (mt ? mt.n : mid))} 🔍</span>`;
+  return `<span class="pill matlink" data-item="mat:${mid}" style="cursor:pointer" title="กดดูแหล่งที่ได้">${aiHtml('mats', mid, 20) || '🧪'} ${esc(label || (mt ? mt.n : mid))}</span>`;
 }
 function matDroppers(mid, topN) {
   const out = [];
@@ -756,7 +756,7 @@ function renderForge() {
     const matRows = [...starterMats].slice(0, 10).map((mid) => {
       const mt = D.materials.find((x) => x.id === mid); if (!mt) return '';
       const dr = matDroppers(mid);
-      return `<tr><td><span class="lk matlink" data-item="mat:${mid}" style="cursor:pointer">${esc(mt.n)} 🔍</span></td><td><small>${esc(mt.from || '–')}</small></td><td>${dr.map((d) => `🎮 ${esc(d.m.n)} (Lv${d.m.lv}) · ${pct(d.chance)} · <small>${d.m.maps.map((mid2) => esc(MAP[mid2]?.n || mid2)).join('/')}</small>`).join('<br>')}</td></tr>`;
+      return `<tr><td><span class="lk matlink" data-item="mat:${mid}" style="cursor:pointer" title="กดดูแหล่งที่ได้">${aiHtml('mats', mid, 20) || '🧪'} ${esc(mt.n)} 🔍</span></td><td><small>${esc(mt.from || '–')}</small></td><td>${dr.map((d) => `🎮 ${esc(d.m.n)} (Lv${d.m.lv}) · ${pct(d.chance)} · <small>${d.m.maps.map((mid2) => esc(MAP[mid2]?.n || mid2)).join('/')}</small>`).join('<br>')}</td></tr>`;
     }).join('');
     /* ขั้นที่ 2: แร่/ไม้จากสกิลชีวิต */
     const ores = D.smelt.filter((s2) => s2.from).map((s2) => {
@@ -862,7 +862,7 @@ function renderForge() {
     const list = D.craft.filter((c) => (!tsel || c.t === tsel) && matches(q, c.n, c.list.map((x) => x.n).join(' ')));
     forgeBox.innerHTML = `<p class="card hint" style="margin-bottom:12px">คราฟต์ที่<b>เตาหลอม</b>ด้วยใบสั่งงาน — ใช้วัสดุจากการฟาร์ม/เหมือง/สกิลชีวิต · แสดงคุณสมบัติครบของไอเทมที่คราฟได้ · กด ⚖️ ที่รายการเพื่อเปรียบเทียบกับดาบบอส/ดาบดรอปตัวอื่น</p>` +
       list.map((c) => `<div class="card setc"><h3>${esc(c.n)}</h3><table class="src"><tr><th>ไอเทม</th><th>เกรด</th><th>เหรียญ</th><th>วัสดุ</th><th>ATK</th><th>ธาตุ</th><th>คุณสมบัติ</th></tr>
-        ${c.list.map((x) => { const w = D.weapons.find((z) => z.id === x.id); return `<tr><td><b>${esc(x.n)}</b>${w && w.wsk ? wskLine(w) : ''}</td><td>${x.g ? GRADE_TH[x.g - 1] : '–'}</td><td>${x.coins.toLocaleString()}</td><td>${x.mats.map((m) => `<span class="lk matlink" data-item="mat:${m.id}" style="cursor:pointer" title="กดดูแหล่งที่ได้">${esc(m.n)}×${m.q} 🔍</span>`).join(' + ')}</td><td>${w ? w.atk : '–'}</td><td>${w ? elTag(w.el) : '–'}</td><td>${w && w.ab ? esc(w.ab) : '–'} ${w ? cmpBtn(w) : ''}</td></tr>`; }).join('')}</table></div>`).join('') || '<p class="hint">ไม่พบสูตร</p>';
+        ${c.list.map((x) => { const w = D.weapons.find((z) => z.id === x.id); return `<tr><td><b>${esc(x.n)}</b>${w && w.wsk ? wskLine(w) : ''}</td><td>${x.g ? GRADE_TH[x.g - 1] : '–'}</td><td>${x.coins.toLocaleString()}</td><td>${x.mats.map((m) => matChip(m.id, m.n) + '×' + m.q).join(' + ')}</td><td>${w ? w.atk : '–'}</td><td>${w ? elTag(w.el) : '–'}</td><td>${w && w.ab ? esc(w.ab) : '–'} ${w ? cmpBtn(w) : ''}</td></tr>`; }).join('')}</table></div>`).join('') || '<p class="hint">ไม่พบสูตร</p>';
   }
 }
 
@@ -1514,7 +1514,7 @@ function drawPlanScene(c) {
 /* ---------- boot ---------- */
 function boot() {
   const h = location.hash.replace('#', '');
-  showPage(pages.includes(h) ? h : 'guide');
+  showPage(pages.includes(h) ? h : 'build');
   openJob('firemage');
   renderDb();
   renderForge();

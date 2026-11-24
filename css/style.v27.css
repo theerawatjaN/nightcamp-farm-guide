@@ -202,8 +202,11 @@ table.src th{color:var(--tx2);font-weight:600}
 /* sprite icons */
 .ai{display:inline-block;vertical-align:middle;border-radius:6px}
 .ic .ai{border-radius:8px}
-.eqbadges{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
-.eqbadges .ai{background:var(--bg2);border:1px solid var(--line);border-radius:10px;padding:2px}
+.matlink{cursor:pointer}
+.matlink:hover{border-color:var(--acc2);color:var(--acc2)}
+.pill .ai{vertical-align:middle;margin-right:3px}
+.pcs-icons{display:flex;gap:6px;flex-wrap:wrap;margin:4px 0}
+.pcic{display:inline-flex;align-items:center;justify-content:center;width:42px;height:42px;background:var(--bg2);border:1px solid var(--line);border-radius:8px}
 .planform{margin-bottom:16px}
 .brktbl{width:100%;border-collapse:collapse;font-size:.85rem;background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden}
 .brktbl th,.brktbl td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
