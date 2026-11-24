@@ -137,15 +137,68 @@ function rateLines(j) {
   return Object.values(out);
 }
 function topLines(rated, key) { return [...rated].sort((a, b) => b[key] - a[key]); }
+/* ── สเตตัสที่แนะนำต่ออาชีพ/สาย/เลเวล (แนวทางกว้าง ๆ ตามสไตล์อาชีพ) ── */
+const STAT_REC = {
+  knight: { main: 'str', sub: 'vit', ter: 'dex' }, paladin: { main: 'str', sub: 'vit', ter: 'dex' },
+  dragonknight: { main: 'str', sub: 'vit', ter: 'dex' }, dawnwarden: { main: 'str', sub: 'vit', ter: 'dex' },
+  dragonbound: { main: 'str', sub: 'vit', ter: 'dex' }, swordmaster: { main: 'str', sub: 'agi', ter: 'dex' },
+  starblade: { main: 'str', sub: 'agi', ter: 'dex' }, berserker: { main: 'str', sub: 'vit', ter: 'dex' },
+  bloodmoon: { main: 'str', sub: 'vit', ter: 'luk' },
+  mage: { main: 'int', sub: 'dex', ter: 'vit' }, archmage: { main: 'int', sub: 'dex', ter: 'vit' },
+  warlock: { main: 'int', sub: 'dex', ter: 'vit' }, firemage: { main: 'int', sub: 'dex', ter: 'vit' },
+  icemage: { main: 'int', sub: 'dex', ter: 'vit' }, starcore: { main: 'int', sub: 'dex', ter: 'vit' },
+  winterlord: { main: 'int', sub: 'dex', ter: 'vit' }, astral: { main: 'int', sub: 'dex', ter: 'vit' },
+  hexlord: { main: 'int', sub: 'dex', ter: 'vit' },
+  archer: { main: 'dex', sub: 'agi', ter: 'str' }, ranger: { main: 'dex', sub: 'agi', ter: 'str' },
+  gunslinger: { main: 'dex', sub: 'agi', ter: 'str' }, outlaw: { main: 'dex', sub: 'agi', ter: 'str' },
+  moonsniper: { main: 'dex', sub: 'agi', ter: 'str' }, wolfhunter: { main: 'dex', sub: 'agi', ter: 'str' },
+  packalpha: { main: 'dex', sub: 'agi', ter: 'str' }, bard: { main: 'dex', sub: 'agi', ter: 'vit' },
+  maestro: { main: 'dex', sub: 'agi', ter: 'vit' },
+  rogue: { main: 'agi', sub: 'str', ter: 'dex' }, assassin: { main: 'agi', sub: 'str', ter: 'luk' },
+  eclipse: { main: 'agi', sub: 'str', ter: 'luk' }, shinobi: { main: 'agi', sub: 'str', ter: 'dex' },
+  shadowlord: { main: 'agi', sub: 'str', ter: 'dex' }, reaper: { main: 'agi', sub: 'str', ter: 'luk' },
+  harvester: { main: 'agi', sub: 'str', ter: 'luk' }, puppeteer: { main: 'agi', sub: 'str', ter: 'dex' },
+  showmaster: { main: 'agi', sub: 'str', ter: 'dex' },
+  priest: { main: 'int', sub: 'dex', ter: 'vit' }, bishop: { main: 'int', sub: 'dex', ter: 'vit' },
+  starsaint: { main: 'int', sub: 'dex', ter: 'vit' }, monk: { main: 'str', sub: 'dex', ter: 'vit' },
+  meteorfist: { main: 'str', sub: 'dex', ter: 'vit' }, lightkeeper: { main: 'int', sub: 'dex', ter: 'vit' },
+  beacon: { main: 'int', sub: 'dex', ter: 'vit' }, wisp: { main: 'int', sub: 'dex', ter: 'vit' },
+  starshepherd: { main: 'int', sub: 'dex', ter: 'vit' },
+  traveler: { main: 'str', sub: 'dex', ter: 'vit' },
+};
+const STAT_WHY = { str: 'ATK ตีประชิดแรง', agi: 'ตีเร็ว + หลบ', vit: 'เลือดเยอะ ยืนนาน', int: 'MATK เวทแรง', dex: 'แม่น + ร่ายเร็ว', luk: 'คริบ่อย' };
+function catPrio(rec, cat) {
+  if (cat === 'pvp') return rec.sub === 'vit' ? [rec.main, rec.sub, rec.ter] : [rec.main, 'vit', rec.sub];
+  return [rec.main, rec.sub, rec.ter];
+}
+function recAllocate(prio, budget, shares) {
+  let remain = budget;
+  return prio.map((k, i) => {
+    const share = Math.min(remain, Math.round(budget * shares[i]));
+    let v = 5, pts = 0;
+    while (pts + costForNext(v) <= share && v < 99) { pts += costForNext(v); v++; }
+    remain -= pts;
+    return { k, to: v, pts };
+  });
+}
+function recStatsHtml(cat, j, lv) {
+  const rec = STAT_REC[j.id] || STAT_REC[j.from] || STAT_REC.traveler;
+  const prio = catPrio(rec, cat);
+  const shares = cat === 'farm' ? [0.7, 0.2, 0.1] : cat === 'boss' ? [0.65, 0.25, 0.1] : [0.6, 0.25, 0.15];
+  const budget = lv * 7;
+  const al = recAllocate(prio, budget, shares);
+  const used = al.reduce((s, a) => s + a.pts, 0);
+  return `<div class="skl"><b>🧭 สเตตัสแนะนำสายนี้ (Lv ${lv}):</b> ${al.map((a) => `<b>${a.k.toUpperCase()}</b> → ${a.to} <small>(${a.pts} แต้ม — ${STAT_WHY[a.k]})</small>`).join(' · ')}<br><small>งบ ≈ ${budget} แต้ม (สมมติ 7/เลเวล) · ต้นทุนขั้นบันไดตามจอจริง · เหลือ ${Math.max(0, budget - used)} แต้มให้ปรับเอง</small></div>`;
+}
 function lineWeaponPick(lineSkillIds) {
   const ws = D.weapons.filter((w) => w.wsk && w.wsk.some((b) => b[1] === cur.job.id && lineSkillIds.has(b[0])));
   return ws.sort((a, b) => b.lv - a.lv)[0] || null;
 }
 function drawBuilds() {
-  const j = cur.job;
+  const j = cur.job, lv = +gLv.value;
   const rated = rateLines(j);
   const box = $('#gBuildsBox');
-  if (!rated.length) { box.innerHTML = '<div class="card hint">อาชีพนี้ยังไม่มีสายสกิลแยก — เลือกอาชีพลูกเพื่อดูไกด์สาย</div>'; return; }
+  if (!rated.length) { box.innerHTML = `<div class="card"><h3>🧭 ค่าสถานะที่แนะนำ</h3>${recStatsHtml('farm', j, lv)}<div class="bonus">อาชีพนี้ยังไม่มีสายสกิลแยก — เลือกอาชีพลูกเพื่อดูไกด์สาย</div></div>`; return; }
   const mk = (cat, icon, title) => {
     const rank = topLines(rated, cat);
     const best = rank[0], alt = rank[1];
@@ -161,6 +214,7 @@ function drawBuilds() {
       <div class="skl"><b>อาวุธที่ควรใช้:</b> ${w ? `<span class="lk" data-item="${w.id}" style="cursor:pointer">${WTICON[w.wt]} ${esc(w.n)} 🔍</span> <small>(Lv ${w.lv} · ATK ${w.atk} · ${ELICON[w.el]}${EL.th(w.el)})</small>` : 'อาวุธอาชีพประจำ'}</div>
       <div class="skl"><b>สกิลหลักของสาย:</b> ${best.skills.filter((s) => s.active || /ATK \+|คริ|ความเร็ว/.test(s.d)).slice(0, 4).map((s) => `<span class="lk" data-item="sk:${s.id}" style="cursor:pointer">${esc(s.n)}</span>`).join(' · ')}</div>
       <div class="skl"><b>🧿 รูนแนะนำสายนี้:</b> ${(() => { const seen = new Set(); const out = []; for (const s of best.skills.slice(0, 3)) for (const r2 of recommendRunes(s)) { if (!seen.has(r2.n)) { seen.add(r2.n); out.push(runeChipHtml(r2)); } } return out.slice(0, 4).join(' ') || '–'; })()}</div>
+      ${recStatsHtml(cat, j, lv)}
       <div class="bonus">${tips[cat]}</div></div>`;
   };
   box.innerHTML = mk('farm', '🌿', 'สายฟาร์ม (เก็บเลเวล/ไอเทม)') + mk('boss', '👑', 'สายล่าบอส') + mk('pvp', '⚔️', 'สาย PvP / ดวล') +
@@ -311,7 +365,7 @@ function drawWeapons() {
 }
 [gWt, gEl].forEach((x) => x.addEventListener('change', drawWeapons));
 $('#gOnlyWsk').addEventListener('change', drawWeapons);
-gLv.addEventListener('input', () => { gLvN.textContent = gLv.value; drawMaps(); drawWeapons(); drawLines(); drawMonCards(); drawSim(); });
+gLv.addEventListener('input', () => { gLvN.textContent = gLv.value; drawMaps(); drawWeapons(); drawBuilds(); drawLines(); drawMonCards(); drawSim(); });
 const gMode = $('#gMode');
 if (gMode) gMode.addEventListener('change', () => { gModeVal = gMode.value; drawWeapons(); drawLines(); drawBuilds(); drawMaps(); drawMonCards(); drawSim(); });
 $('#simWeapon').addEventListener('change', () => { drawMonCards(); });
