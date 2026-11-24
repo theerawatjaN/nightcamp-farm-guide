@@ -154,6 +154,15 @@ table.src th{color:var(--tx2);font-weight:600}
 
 .pcs-icons{display:flex;gap:6px;flex-wrap:wrap;margin:4px 0}
 .pcic{display:inline-flex;align-items:center;justify-content:center;width:42px;height:42px;background:var(--bg2);border:1px solid var(--line);border-radius:8px}
+.scombo{position:relative;display:inline-block;width:100%}
+.comboinput{width:100%;background:var(--bg2);color:var(--tx);border:1px solid var(--line);border-radius:8px;padding:6px 8px;font:inherit;font-size:.82rem;cursor:pointer}
+.comboinput:focus{border-color:var(--acc2);outline:none}
+.comborow{position:absolute;top:100%;left:0;right:0;max-height:280px;overflow:auto;background:var(--card2);border:1px solid var(--line);border-radius:8px;z-index:200;box-shadow:0 8px 20px rgba(0,0,0,.5)}
+.comboitem{padding:5px 10px;font-size:.8rem;cursor:pointer;border-bottom:1px solid rgba(42,51,80,.5)}
+.comboitem small{color:var(--acc2)}
+.comboitem:hover{background:var(--card2);filter:brightness(1.25)}
+.comboitem.cur{color:var(--acc)}
+.scombo select{display:none}
 .gearui{display:grid;grid-template-columns:1fr minmax(200px,240px) 1fr;gap:10px;align-items:start}
 @media(max-width:760px){.gearui{grid-template-columns:1fr 1fr}.gearcenter{grid-column:1/-1;order:-1}}
 .gearcol{display:flex;flex-direction:column;gap:8px}

@@ -873,6 +873,7 @@ const B = {
   skills: {},
   eq: { weapon: '', top: '', pants: '', hat: '', acc: '', robe: '', glasses: '', shield: '' },
   ref: { weapon: 0, top: 0, pants: 0, hat: 0, acc: 0, robe: 0, glasses: 0, shield: 0 },
+  slotGrade: {},
   opt: { weapon: [], top: [], pants: [], hat: [], acc: [], robe: [], glasses: [], shield: [] },
   otier: {},
 };
@@ -989,15 +990,29 @@ function gStatsHtml(slot) {
   });
   return `<div class="gstats">${lines.map((l) => `<div>${l}</div>`).join('')}</div>`;
 }
+function armorGrade(a) {
+  if (a.g) return a.g;
+  const s = D.sets.find((x) => x.id === a.set);
+  return s ? (s.g || null) : null;
+}
 function gFilterItems(slot, items) {
   let out = items.filter((x) => (x.lv || 0) <= B.lv);                       // เลเวลอุปกรณ์ ≤ เลเวลตัวละคร
-  if (B.gradeFilter) out = out.filter((x) => (x.g ?? 1) === B.gradeFilter); // กรองเกรด (ไม่ระบุเกรด = เกรด 1)
+  const grade = B.slotGrade[slot];
+  if (grade) out = out.filter((x) => (slot === 'weapon' ? (x.g ?? 1) : armorGrade(x)) === grade);
   const curSel = B.eq[slot];
   if (curSel && !out.some((x) => x.id === curSel)) {
     const cur = items.find((x) => x.id === curSel);
     if (cur) out = out.concat(cur); // คงของที่เลือกไว้แม้ถูกกรองออก
   }
   return out;
+}
+function gradeDots(g) { return g ? '●'.repeat(g) + '<span style="opacity:.25">' + '●'.repeat(4 - g) + '</span>' : ''; }
+function naturalRows(slot, g) {
+  if (!g) return null;
+  if (slot === 'weapon') return [1, 2, 2, 3][g - 1];
+  if (slot === 'top' || slot === 'pants') return [1, 1, 2, 2][g - 1];
+  if (slot === 'hat' || slot === 'acc') return 1;
+  return null;
 }
 function bRenderEquip() {
   const wts = wtsOf(JOB[B.job]);
@@ -1008,6 +1023,12 @@ function bRenderEquip() {
     items = gFilterItems(slot, items.slice().sort((a, b) => a.lv - b.lv));
     const it = gItemOf(slot);
     const over = it && it.lv > B.lv ? `<small style="color:var(--red)">⚠ Lv${it.lv} &gt; Lv${B.lv}</small>` : '';
+    const gSel = B.slotGrade[slot] || '';
+    const gradeSel = `<label class="sel"><span>เกรด</span><select data-grad="${slot}"><option value="">ทั้งหมด</option>${[1, 2, 3, 4].map((g) => `<option value="${g}" ${+gSel === g ? 'selected' : ''}>เกรด ${g}</option>`).join('')}</select></label>`;
+    const itGrade = it ? (slot === 'weapon' ? (it.g ?? 1) : armorGrade(it)) : null;
+    const dots = itGrade ? `<span class="gdots" title="เกรด ${itGrade}">${gradeDots(itGrade)}</span>` : '';
+    const nat = naturalRows(slot, itGrade);
+    const rowsHint = nat ? `<small class="hint">แถวออฟตามเกรด: ${nat} (+เจาะเพิ่มได้ สูงสุด 4)</small>` : '';
     const gBadge = it && it.g ? `<span class="pill">เกรด ${it.g}</span>` : '';
     const rows = B.opt[slot] || [];
     const opts = bOptOptions(slot);
@@ -1029,14 +1050,17 @@ function bRenderEquip() {
       </div>
       ${gStatsHtml(slot)}
       <div class="eqopts">
+        ${gradeSel}
         <label class="sel"><span>ตีบวก</span><select data-ref="${slot}"><option value="" ${!B.ref[slot] ? 'selected' : ''}>+0</option>${[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => `<option value="${n}" ${B.ref[slot] === n ? 'selected' : ''}>+${n}</option>`).join('')}</select></label>
       </div>
+      <div>${dots} ${rowsHint}</div>
       <div class="eqoptrows">${optRows}</div>
     </div>`;
   };
   $('#gearLeft').innerHTML = GEAR_LEFT.map(build).join('');
   $('#gearRight').innerHTML = GEAR_RIGHT.map(build).join('');
   $$('[data-eq]').forEach((s) => s.onchange = () => { B.eq[s.dataset.eq] = s.value; bRenderEquip(); bCompute(); });
+  $$('[data-grad]').forEach((s) => s.onchange = () => { B.slotGrade[s.dataset.grad] = +s.value || ''; bRenderEquip(); bCompute(); });
   $$('[data-ref]').forEach((s) => s.onchange = () => { B.ref[s.dataset.ref] = +s.value; bCompute(); gStatsRefresh(); });
   $$('[data-optrow]').forEach((s) => s.onchange = () => { B.opt[s.dataset.optrow][+s.dataset.idx] = s.value; bRenderEquip(); bCompute(); });
   $$('[data-otier]').forEach((s) => s.onchange = () => { B.otier[s.dataset.otier + '_' + s.dataset.idx] = +s.value; bCompute(); gStatsRefresh(); });
@@ -1289,6 +1313,53 @@ function bInit() {
   cur.wts = wtsOf(JOB[B.job]);
   bRenderAll();
 }
+
+/* ---------- searchable dropdowns (combo) สำหรับ select ทุกตัว ---------- */
+const snorm = (s) => String(s || '').toLowerCase();
+function searchifySelect(sel) {
+  if (sel._sf) return;
+  sel._sf = true;
+  sel.style.display = 'none';
+  const wrap = document.createElement('span');
+  wrap.className = 'scombo';
+  sel.parentNode.insertBefore(wrap, sel);
+  const btn = document.createElement('input');
+  btn.type = 'text'; btn.className = 'comboinput'; btn.readOnly = false;
+  const label = () => (sel.selectedOptions[0] ? (sel.selectedOptions[0]._gp ? sel.selectedOptions[0]._gp + ' › ' : '') + sel.selectedOptions[0].textContent.trim() : '');
+  btn.value = label();
+  const panel = document.createElement('div');
+  panel.className = 'comborow hidden';
+  wrap.appendChild(btn); wrap.appendChild(panel);
+  const groups = new Map();
+  Array.from(sel.children).forEach((ch) => {
+    if (ch.tagName === 'OPTGROUP') Array.from(ch.children).forEach((o) => groups.set(o, ch.label || ''));
+  });
+  const items = Array.from(sel.options);
+  items.forEach((o) => { o._gp = groups.get(o) || ''; });
+  const render = (q) => {
+    const f = items.filter((o) => !snorm(q) || snorm(o.textContent).includes(snorm(q)) || snorm(o._gp).includes(snorm(q)));
+    panel.innerHTML = f.slice(0, 80).map((o) => `<div class="comboitem ${o.selected ? 'cur' : ''}" data-v="${o.value}">${o._gp ? '<small>' + esc(o._gp) + ' ›</small> ' : ''}${esc(o.textContent.trim())}</div>`).join('') +
+      (f.length > 80 ? `<div class="hint" style="padding:4px 8px">…พิมพ์เพิ่มเพื่อกรอง (ทั้งหมด ${f.length})</div>` : '') || '<div class="hint" style="padding:4px 8px">ไม่พบ</div>';
+    panel.classList.remove('hidden');
+  };
+  btn.addEventListener('focus', () => { btn.value = ''; render(''); });
+  btn.addEventListener('input', () => render(btn.value));
+  btn.addEventListener('keydown', (e) => { if (e.key === 'Enter') { const first = panel.querySelector('.comboitem'); if (first) first.click(); e.preventDefault(); } });
+  panel.addEventListener('mousedown', (e) => {
+    const it = e.target.closest('.comboitem'); if (!it) return;
+    e.preventDefault();
+    sel.value = it.dataset.v;
+    btn.value = it.textContent.trim();
+    panel.classList.add('hidden');
+    sel.dispatchEvent(new Event('change'));
+  });
+  document.addEventListener('click', (e) => { if (!wrap.contains(e.target)) { panel.classList.add('hidden'); if (btn.value.trim() === '') btn.value = label(); } });
+}
+function searchifyAll(root) {
+  (root || document).querySelectorAll('select:not([data-sf])').forEach((sel) => { sel.dataset.sf = 1; searchifySelect(sel); });
+}
+const searchObserver = new MutationObserver(() => searchifyAll());
+searchObserver.observe(document.body, { childList: true, subtree: true });
 
 /* ════════════════════════ PAGE 3 · วางแผนฟาร์ม ════════════════════════ */
 const pJob = $('#pJob'), pLv = $('#pLv'), pLvN = $('#pLvN'), pSize = $('#pSize'), pGoal = $('#pGoal'), pMembers = $('#pMembers'), pBuffs = $('#pBuffs'), pOut = $('#pOut');
