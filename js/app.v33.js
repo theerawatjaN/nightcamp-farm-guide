@@ -868,7 +868,7 @@ function renderForge() {
 
 /* ════════════════════════ PAGE 3.5 · จำลอง build ตัวละคร ════════════════════════ */
 const B = {
-  job: 'firemage', lv: 50, jlv: 50, spPerLv: 5, gender: 'm', gradeFilter: '',
+  job: 'firemage', lv: 50, jlv: 50, spPerLv: 5, gender: 'f', gradeFilter: '',
   stats: { str: 0, agi: 0, vit: 0, int: 0, dex: 0, luk: 0 },
   skills: {},
   eq: { weapon: '', top: '', pants: '', hat: '', acc: '', robe: '', glasses: '', shield: '' },
@@ -1142,40 +1142,36 @@ function bRenderPreview() {
   const els = {}; j.sk.forEach((s) => { if (s.el) els[s.el] = (els[s.el] || 0) + 1; });
   const mainEl = Object.keys(els).sort((a, b) => els[b] - els[a])[0] || 'neutral';
   const elc = (EL.col(mainEl) || '#ffb454').trim();
-  /* ── พื้นหลังเรียบ ๆ + ตัวละครจริงจากเกม ── */
-  const bg = ctx.createRadialGradient(W / 2, H * .45, 20, W / 2, H * .5, H * .8);
-  bg.addColorStop(0, '#1d2639'); bg.addColorStop(1, '#0d1017');
-  ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
+  /* ── ตัวละครผู้หญิง (แชมบี้) ── */
   const cx = W / 2;
-  const pi = AI_IDX.jobs[j.id];
-  if (pi != null && JOBS_IMG) {
-    const m = D.atlas.meta.jobs;
-    const sx = (pi % m.cols) * m.cell, sy = Math.floor(pi / m.cols) * m.cell;
-    const ps = Math.min(H - 46, W - 24);
-    const x0 = cx - ps / 2, y0 = 26;
-    ctx.imageSmoothingEnabled = true;
-    ctx.drawImage(JOBS_IMG, sx, sy, m.cell, m.cell, x0, y0, ps, ps);
-    // ซ้อนอุปกรณ์บนตัวจริง: แสดงในการ์ดอุปกรณ์ข้างตัวแทน (ไม่ทับตัวละคร)
-  } else {
-    // fallback: ตัวการ์ตูนวาดเอง
+  {
     const topY = H * .32, bodyH = H * .28;
+    ctx.fillStyle = 'rgba(0,0,0,.25)'; ctx.beginPath(); ctx.ellipse(cx, topY + bodyH + H * .15, 44, 9, 0, 0, 7); ctx.fill();
     ctx.fillStyle = '#5a6a8a';
     ctx.fillRect(cx - 16, topY + bodyH, 12, H * .14);
     ctx.fillRect(cx + 4, topY + bodyH, 12, H * .14);
+    ctx.fillStyle = '#4a3826';
+    ctx.fillRect(cx - 19, topY + bodyH + H * .14 - 7, 16, 9);
+    ctx.fillRect(cx + 3, topY + bodyH + H * .14 - 7, 16, 9);
     if (B.eq.pants) drawItemSprite(ctx, B.eq.pants, cx - 25, topY + bodyH - 9, 50);
     ctx.fillStyle = '#46506e';
     ctx.beginPath(); ctx.moveTo(cx - 23, topY + 10); ctx.quadraticCurveTo(cx - 19, topY + bodyH - 4, cx - 14, topY + bodyH);
     ctx.lineTo(cx + 14, topY + bodyH); ctx.quadraticCurveTo(cx + 19, topY + bodyH - 4, cx + 23, topY + 10); ctx.closePath(); ctx.fill();
     if (B.eq.top) drawItemSprite(ctx, B.eq.top, cx - 32, topY, 64);
+    ctx.fillStyle = elc + 'aa'; ctx.fillRect(cx - 20, topY + bodyH - 9, 40, 5);
     ctx.strokeStyle = '#ffe0b2'; ctx.lineWidth = 9; ctx.lineCap = 'round';
     ctx.beginPath(); ctx.moveTo(cx - 21, topY + 18); ctx.lineTo(cx - 31, topY + bodyH * .78); ctx.stroke();
     ctx.beginPath(); ctx.moveTo(cx + 21, topY + 18); ctx.lineTo(cx + 38, topY + bodyH * .58); ctx.stroke();
     ctx.fillStyle = '#ffe0b2'; ctx.beginPath(); ctx.arc(cx, topY - 6, 29, 0, 7); ctx.fill();
-    ctx.fillStyle = B.gender === 'f' ? '#c98a5b' : '#3a3f52';
-    ctx.beginPath(); ctx.arc(cx, topY - 9, 28, Math.PI, Math.PI * 2); ctx.fill();
+    // ผมหญิง (ยาว)
+    ctx.fillStyle = '#c98a5b';
+    ctx.beginPath(); ctx.arc(cx, topY - 12, 30, Math.PI * 1.02, Math.PI * 1.98); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(cx - 29, topY - 8); ctx.quadraticCurveTo(cx - 39, topY + 32, cx - 19, topY + 38); ctx.lineTo(cx - 14, topY + 2); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(cx + 29, topY - 8); ctx.quadraticCurveTo(cx + 39, topY + 32, cx + 19, topY + 38); ctx.lineTo(cx + 14, topY + 2); ctx.fill();
     ctx.fillStyle = '#20242e';
     ctx.beginPath(); ctx.arc(cx - 10, topY - 4, 3, 0, 7); ctx.fill();
     ctx.beginPath(); ctx.arc(cx + 10, topY - 4, 3, 0, 7); ctx.fill();
+    ctx.strokeStyle = '#b5764a'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(cx, topY + 6, 5, 0.15 * Math.PI, 0.85 * Math.PI); ctx.stroke();
     if (B.eq.hat) drawHatSprite(ctx, B.eq.hat, cx - 32, topY - 74, 64);
     if (B.eq.weapon) {
       ctx.save(); ctx.translate(cx + 44, topY + bodyH * .58); ctx.rotate(-0.85);
@@ -1331,7 +1327,6 @@ function bInit() {
   bJob.onchange = () => { B.job = bJob.value; B.skills = {}; B.eq = { weapon: '', top: '', pants: '', hat: '', acc: '', robe: '', glasses: '', shield: '' }; B.ref = { weapon: 0, top: 0, pants: 0, hat: 0, acc: 0, robe: 0, glasses: 0, shield: 0 }; B.opt = { weapon: [], top: [], pants: [], hat: [], acc: [], robe: [], glasses: [], shield: [] }; B.otier = {}; bRenderAll(); };
   bLv.oninput = () => { B.lv = +bLv.value; bRenderAll(); };
   bJobLv.oninput = () => { B.jlv = +bJobLv.value; bRenderAll(); };
-  $('#bGender').onchange = (e) => { B.gender = e.target.value; const gl = $('#bGenderLabel'); if (gl) gl.textContent = e.target.value === 'f' ? 'หญิง' : 'ชาย'; };  $('#bGrade').onchange = (e) => { B.gradeFilter = +e.target.value || ''; bRenderEquip(); bCompute(); };
   cur.wts = wtsOf(JOB[B.job]);
   bRenderAll();
 }
