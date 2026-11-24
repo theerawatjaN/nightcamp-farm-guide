@@ -170,7 +170,7 @@ const refine = {
   brk: W.sys.refine.brk,
   kinds: Object.fromEntries(Object.entries(W.s2.refineNeeds).map(([kind, e]) => {
     const rep = REFINE_KIND[kind] || { n: kind, item: kind };
-    const steps = (e.steps || []).map((grade) => grade.map((step) => step.map(([mid, q]) => ({ mat: MAT[mid] ? t(MAT[mid].n) : (smeltGoods[mid] ? t(smeltGoods[mid].n) : mid), q }))));
+    const steps = (e.steps || []).map((grade) => grade.map((step) => step.map(([mid, q]) => ({ id: mid, mat: MAT[mid] ? t(MAT[mid].n) : (smeltGoods[mid] ? t(smeltGoods[mid].n) : mid), q }))));
     return [kind, { n: rep.n, item: rep.item, grades: steps }];
   })),
 };
@@ -195,5 +195,5 @@ const data = {
 
 const out = 'window.NC_DATA = ' + JSON.stringify(data) + ';';
 fs.mkdirSync(path.join(root, 'js'), { recursive: true });
-fs.writeFileSync(path.join(root, 'js/data.v24.js'), out);
+fs.writeFileSync(path.join(root, 'js/data.v25.js'), out);
 console.log('written js/data.js', (out.length / 1e6).toFixed(2), 'MB ·', weapons.length, 'weapons ·', monsters.length, 'monsters ·', maps.length, 'maps ·', sets.length, 'sets ·', runes.length, 'runes');

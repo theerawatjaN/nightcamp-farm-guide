@@ -620,15 +620,16 @@ function openModal(id) {
         const d = (m.mats || []).find((x) => x[0] === mid);
         if (d) droppers.push({ m, chance: d[1] });
       }
-      droppers.sort((a, b) => a.m.lv - b.m.lv);
+      droppers.sort((a, b) => b.chance - a.chance);
       const usedIn = [];
       D.craft.forEach((c) => c.list.forEach((x) => { if ((x.mats || []).some((m2) => m2.id === mid)) usedIn.push(x.n); }));
+      const best = droppers.length ? droppers[0].chance : 0;
       $('#modalBody').innerHTML = `<h2>${esc(mt.n)}</h2>
         <div class="kv">
           <dt>รายละเอียด</dt><dd>${esc(mt.d) || '–'}</dd>
           <dt>ราคาขาย</dt><dd>${mt.p ? mt.p.toLocaleString() + ' เหรียญ' : '–'}${mt.rare ? ' · หายาก' : ''}</dd>
           <dt>วิธีหา</dt><dd>${esc(mt.from) || '–'}</dd>
-          <dt>มอนที่ดรอป</dt><dd>${droppers.map((d) => `${esc(d.m.n)} (Lv${d.m.lv}) · ${pct(d.chance)} · 📍 ${d.m.maps.map((m2) => esc(MAP[m2]?.n || m2) + ' (' + esc(MAP[m2]?.regionN || '') + ')').join(' / ')}`).join('<br>') || '– (ได้จากสกิลชีวิต/เหมืองตาม "วิธีหา")'}</dd>
+          <dt>มอนที่ดรอป</dt><dd>${droppers.map((d) => `${d.chance === best && best > 0 ? '⭐ ' : ''}${esc(d.m.n)} (Lv${d.m.lv}) · ${pct(d.chance)} · 📍 ${d.m.maps.map((m2) => esc(MAP[m2]?.n || m2) + ' (' + esc(MAP[m2]?.regionN || '') + ')').join(' / ')}`).join('<br>') || '– (ได้จากสกิลชีวิต/เหมืองตาม "วิธีหา")'}</dd>
           <dt>ใช้ทำ</dt><dd>${usedIn.map(esc).join(' · ') || '–'}</dd>
         </div>`;
     }
@@ -721,6 +722,19 @@ $('#forgeTabs').addEventListener('click', (e) => { const b = e.target.closest('b
 forgeQ.addEventListener('input', renderForge);
 
 const GRADE_TH = ['เกรด 1', 'เกรด 2', 'เกรด 3', 'เกรด 4'];
+function matChip(mid, label) {
+  const mt = D.materials.find((x) => x.id === mid);
+  if (!mt && !label) return '';
+  return `<span class="pill matlink" data-item="mat:${mid}" style="cursor:pointer" title="กดดูแหล่งที่ได้">${esc(label || (mt ? mt.n : mid))} 🔍</span>`;
+}
+function matDroppers(mid, topN) {
+  const out = [];
+  for (const m of D.monsters) {
+    const d = (m.mats || []).find((x) => x[0] === mid);
+    if (d) out.push({ m, chance: d[1] });
+  }
+  return out.sort((a, b) => b.chance - a.chance).slice(0, topN || 5);
+}
 function renderForge() {
   const q = forgeQ.value.trim();
   if (forgeTab === 'howto') {
@@ -772,6 +786,8 @@ function renderForge() {
     let html = `<div class="card" style="margin-bottom:12px"><b>กฎการตีบวก</b> (ซีซัน 2)
       <div class="bonus" style="margin-top:6px">ป๋าหมูหริ่งตีบวกอาวุธ/เกราะ/หมวก/เครื่องประดับจาก +1 ถึง +10 · อาวุธแต่ละเลเวล ATK +4% (+40% ที่ +10) · เกราะ/หมวกได้ DEF +1 ทุกสองเลเวล และ HP +0.5% ต่อเลเวล · ไม่มีขั้นการันตีแล้ว พลาดเสียแค่ค่าตี · <b>+9/+10</b> พลาดแล้วขั้นลดลง 1 และมีโอกาส <b>${D.refine.brk['9']}% / ${D.refine.brk['10']}%</b> ที่ชิ้นจะแตก (เปิดใช้<b>หินกันแตก</b> — หลอมจากแกนดาว ×1 + แท่งดาว ×2 — เพื่อกันแตก) · อาวุธเรืองแสง: +5 ประกาย, +7 น้ำเงิน, +8 ม่วง, +9 ส้มทอง, +10 สายรุ้ง</div></div>`;
     if (q) html += `<p class="hint">ค้นหา "${esc(q)}" — แสดงเฉพาะวัสดุที่ตรง</p>`;
+    html += `<div class="card" style="margin-bottom:10px"><b>🧪 วัสดุที่ใช้ (กดดูแหล่งดรอป — มอนที่ดรอปได้จะติด ⭐ ที่โอกาสสูงสุด)</b><div style="margin-top:6px">
+      ${matChip('lc_quench_oil')}${matChip('mat_safety')}${matChip('lc_starcore')}${matChip('lc_ingot_star')}${matChip('mat_aurelion_core')}</div></div>`;
     html += `<h3>โอกาสสำเร็จ (%)</h3><table class="src"><tr><th>ขั้น</th><th>${GRADE_TH.join('</th><th>')}</th></tr>`;
     for (let s = 1; s <= 10; s++) html += `<tr><td><b>+${s}</b></td>${[1, 2, 3, 4].map((g) => `<td>${rates[g][s]}%</td>`).join('')}</tr>`;
     html += '</table>';
@@ -784,8 +800,8 @@ function renderForge() {
       if (q && !matches(q, k.n, k.item, mats.join(' '))) continue;
       html += `<div class="card setc" style="margin-bottom:10px"><h3>${esc(k.n)}</h3><table class="src"><tr><th>เกรด</th><th>ขั้น +1 → +10 (วัสดุต่อครั้ง)</th></tr>`;
       k.grades.forEach((grade, gi2) => {
-        const brief = grade.map((step, i2) => '+(' + (i2 + 1) + '): ' + step.map((m) => m.mat + '×' + m.q).join(' + ')).join(' · ');
-        html += `<tr><td>${GRADE_TH[gi2]}</td><td>${esc(brief)}</td></tr>`;
+        const brief = grade.map((step, i2) => '+(' + (i2 + 1) + '): ' + step.map((m) => matChip(m.id, m.mat) + '×' + m.q).join(' + ')).join(' · ');
+        html += `<tr><td>${GRADE_TH[gi2]}</td><td>${brief}</td></tr>`;
       });
       html += `</table></div>`;
     }
@@ -801,11 +817,12 @@ function renderForge() {
       return { good: s2, oreN: oreMat ? oreMat.n : s2.from, fromText, droppers: droppers.sort((a, b) => a.m.lv - b.m.lv).slice(0, 4) };
     });
     if (srcs.length) {
-      html += `<h3 style="margin-top:14px">📍 แหล่งที่ได้แร่/วัสดุตีบวก (ขุดเหมือง · ตัดไม้ · มอน)</h3>
+      html += `<h3 style="margin-top:14px">📍 แหล่งที่ได้แร่/วัสดุตีบวก (ขุดเหมือง · ตัดไม้ · มอน — มอนที่ดรอปเยอะสุดติด ⭐)</h3>
         <table class="src"><tr><th>วัสดุหลอม</th><th>แร่ดิบ</th><th>แหล่งที่ได้</th></tr>`;
       for (const { good, oreN, fromText, droppers } of srcs) {
-        const monHtml = droppers.length ? '<br>' + droppers.map((d) => `🎮 ${esc(d.m.n)} (Lv${d.m.lv}) · ${pct(d.chance)} · <small>${d.m.maps.map((mid) => esc(MAP[mid]?.n || mid)).join('/')}</small>`).join('<br>') : '';
-        html += `<tr><td><b>${esc(good.n)}</b></td><td>${esc(oreN)}</td><td>${fromText ? esc(fromText) : '–'}${monHtml}</td></tr>`;
+        const best = droppers.length ? Math.max(...droppers.map((d) => d.chance)) : 0;
+        const monHtml = droppers.length ? '<br>' + droppers.map((d) => `${(d.chance === best ? '⭐ ' : '')}🎮 ${esc(d.m.n)} (Lv${d.m.lv}) · ${pct(d.chance)} · <small>${d.m.maps.map((mid) => esc(MAP[mid]?.n || mid)).join('/')}</small>`).join('<br>') : '';
+        html += `<tr><td>${matChip(good.from, good.n)}</td><td>${matChip(good.from, oreN)}</td><td>${fromText ? esc(fromText) : '–'}${monHtml}</td></tr>`;
       }
       html += `</table>
       <p class="note">หมายเหตุ: แท่งดาว = หลอมจาก "แร่ดาวตก" ที่ขุดได้จากเหมืองอุกกาบาต (Meteor Shaft F1–7) และดันเจี้ยน Lv85+ · แกนดาว (ทำหินกันแตก) ได้จากดันเจี้ยนลึก/บอสตามข้อมูลวิกิ</p>`;
@@ -820,7 +837,8 @@ function renderForge() {
     const byGroup = {};
     list.forEach((o) => { (byGroup[o.g || 'atk'] = byGroup[o.g || 'atk'] || []).push(o); });
     forgeBox.innerHTML = `<div class="card" style="margin-bottom:12px"><b>กฎแถวออฟ</b>
-      <div class="bonus" style="margin-top:6px">อุปกรณ์ทุกชิ้นดรอปพร้อมแถวออฟ: อาวุธ <b>1/2/2/3</b> แถวตามเกรด · เสื้อกับกางเกง <b>1/1/2/2</b> · หมวกกับเครื่องประดับ <b>1</b> (ชิ้นจากบอสเพิ่มอีก 1) · แต่ละแถวสุ่มขั้น: <b>ธรรมดา 60% · ดี 30% · เทพ 10%</b> · ซีซัน 2 ลดค่าทุกแถวลงครึ่งหนึ่ง และจำกัดแถวสเตตัสไว้ที่ +10 ต่อแถว (FLEE 50, ร่าย 30%, ดาเมจคริ 100%) · ชิ้นหนึ่งมีได้สูงสุด <b>4 แถว</b> และชนิดเดียวกันได้ไม่เกิน <b>2</b></div></div>
+      <div class="bonus" style="margin-top:6px">อุปกรณ์ทุกชิ้นดรอปพร้อมแถวออฟ: อาวุธ <b>1/2/2/3</b> แถวตามเกรด · เสื้อกับกางเกง <b>1/1/2/2</b> · หมวกกับเครื่องประดับ <b>1</b> (ชิ้นจากบอสเพิ่มอีก 1) · แต่ละแถวสุ่มขั้น: <b>ธรรมดา 60% · ดี 30% · เทพ 10%</b> · ซีซัน 2 ลดค่าทุกแถวลงครึ่งหนึ่ง และจำกัดแถวสเตตัสไว้ที่ +10 ต่อแถว (FLEE 50, ร่าย 30%, ดาเมจคริ 100%) · ชิ้นหนึ่งมีได้สูงสุด <b>4 แถว</b> และชนิดเดียวกันได้ไม่เกิน <b>2</b></div>
+      <div class="bonus" style="margin-top:6px"><b>🧪 วัสดุที่ใช้ (กดดูแหล่งดรอป — ⭐ = มอนที่โอกาสดรอปสูงสุด):</b> ${matChip('mat_opt_stone')}${matChip('mat_drill_stone')}${matChip('mat_opt_stone_b')}</div></div>
       <table class="src"><tr><th>แถวออฟ</th><th>ธรรมดา (60%)</th><th>ดี (30%)</th><th>เทพ (10%)</th><th>เพดาน</th><th>เปิดที่</th></tr>
       ${Object.entries(byGroup).map(([g, arr]) => `<tr><td colspan="6" style="color:var(--acc);font-weight:700">${GROUP_TH[g] || g}</td></tr>` + arr.map((o) =>
         `<tr><td><b>${esc(o.label)}</b>${o.unit === '%' ? ' <small>%</small>' : ''}${o.subs.length ? `<br><small>${esc(o.subs.join(' / '))}</small>` : ''}</td>${o.tiers.map((tv) => `<td>${tv[0] === tv[1] ? tv[0] : tv[0] + '–' + tv[1]}${o.unit}</td>`).join('')}<td>${o.cap ? (o.cap > 1 ? o.cap + o.unit : (o.cap * 100) + '%') : '–'}</td><td>${o.on.map(esc).join(', ')}</td></tr>`).join('')).join('')}</table>
@@ -832,7 +850,7 @@ function renderForge() {
   } else if (forgeTab === 'taint') {
     forgeFilters.innerHTML = '';
     const list = D.traits.filter((t2) => matches(q, t2.n, t2.up, t2.dn));
-    forgeBox.innerHTML = `<p class="card hint" style="margin-bottom:12px">ไอเทมที่ดรอปมีโอกาส <b>2% (1 ใน 50)</b> เป็น<b>ของแปดเปื้อน</b>: มีคุณสมบัติเด่น (ข้อดีแรง) พร้อมข้อเสียจริง แสดงบนชิ้นสีม่วงพร้อมเครื่องหมาย ☾ — แปดเปื้อนติดไปกับชิ้นนั้นตลอด (ในกระเป๋าและร้านค้า)<br><span style="color:var(--acc)">โอกาสรวม 2% ต่อชิ้นที่ดรอป · วิกิไม่ได้เปิดเผย % รายชนิดของคุณสมบัติ — ตารางด้านล่างจึงไม่มี % ต่อคุณสมบัติ</span></p>
+    forgeBox.innerHTML = `<p class="card hint" style="margin-bottom:12px">ไอเทมที่ดรอปมีโอกาส <b>2% (1 ใน 50)</b> เป็น<b>ของแปดเปื้อน</b>: มีคุณสมบัติเด่น (ข้อดีแรง) พร้อมข้อเสียจริง แสดงบนชิ้นสีม่วงพร้อมเครื่องหมาย ☾ — แปดเปื้อนติดไปกับชิ้นนั้นตลอด (ในกระเป๋าและร้านค้า)<br><span style="color:var(--acc)">โอกาสรวม 2% ต่อชิ้นที่ดรอป · วิกิไม่ได้เปิดเผย % รายชนิดของคุณสมบัติ — ตารางด้านล่างจึงไม่มี % ต่อคุณสมบัติ</span><br><b style="color:var(--tx)">🧪 วัสดุที่ใช้: ไม่มี</b> — ของแปดเปื้อนได้จากการดรอปโดยตรงของมอนทุกตัว (ไม่ต้องคราฟ) · ขัดเกรดใหม่: 10,000 / 30,000 / 80,000 / 160,000 เหรียญตามเกรด</p>
       <table class="src"><tr><th>คุณสมบัติ</th><th>ข้อดี</th><th>ข้อเสีย</th></tr>
       ${list.map((t2) => `<tr><td><b>☾ ${esc(t2.n)}</b></td><td>${esc(t2.up)}</td><td style="color:var(--red)">${esc(t2.dn)}</td></tr>`).join('')}</table>`;
   } else if (forgeTab === 'craft') {
