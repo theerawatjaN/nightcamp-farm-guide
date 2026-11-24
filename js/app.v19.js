@@ -194,6 +194,14 @@ const RUNE_INFO = {
 };
 const RUNE_BY_EL = { fire: 'ไฟลาม', water: 'ฟรอสต์', wind: 'สายฟ้าฟาด', poison: 'พิษซ้อน', shadow: 'เงาตีซ้ำ', holy: 'วงเวทแสงขับมาร', earth: 'หินแหลมพสุธา', undead: 'วงเวทแสงขับมาร', ghost: 'อุกกาบาตเงา', neutral: 'ดาบพายุหมุน' };
 const AOE_RE2 = /รัศมี|เป็นวง|วงกว้าง|รอบตัว|ทั้งแนว|ฝูง|กระจาย|พัด|ฝน|ศัตรูในวง|ทุก (ตัว|ศัตรู)/;
+const RUNE_ALIAS = { 'แยก': 'split', 'ขยาย': 'wide', 'จดจ่อ': 'focus', 'เสียงสะท้อน': 'echo', 'เร่ง': 'haste', 'ค้างอยู่': 'linger', 'ระเบิดศพ': 'corpse', 'เจาะเกราะ': 'apierce', 'เจาะเวท': 'wpierce', 'ดึง': 'pull', 'เด้ง': 'bounce', 'ดาบพายุหมุน': null, 'สายฟ้าฟาด': 'skyfall', 'วงเวทแสงขับมาร': null, 'หินแหลมพสุธา': null, 'อุกกาบาตถล่ม': null, 'เจ้าแห่งอสนี': null, 'อุกกาบาตเงา': null, 'ฟรอสต์': 'frostbite', 'ไฟลาม': 'wildfire', 'พิษซ้อน': 'venom', 'เงาตีซ้ำ': 'shade', 'สายฟ้าแตก': 'arc', 'กับดัก': 'trap' };
+function runeChipHtml(r2) {
+  const info = RUNE_INFO[r2.n];
+  const tip = info ? esc(info.el ? 'ธาตุ ' + info.el + ' · ' + info.d : info.d) : '';
+  const rid = RUNE_ALIAS[r2.n];
+  if (rid && D.runes.find((x) => x.id === rid)) return `<span class="pill runechip ${r2.star ? 'star' : ''}" data-item="rune:${rid}" title="${tip} — กดดูแหล่งดรอป">${r2.star ? '⭐ ' : ''}รูน${r2.n} 🔍</span>`;
+  return `<span class="pill runechip craft ${r2.star ? 'star' : ''}" data-item="runeS2:${r2.n}" title="${tip} — กดดูรายละเอียด">${r2.star ? '⭐ ' : ''}รูน${r2.n} 🔍</span>`;
+}
 function recommendRunes(s) {
   const rec = [];
   const mainRune = RUNE_BY_EL[s.el] || 'ดาบพายุหมุน';
@@ -252,7 +260,7 @@ function drawLines() {
         const rec = recommendRunes(s);
         const slot1 = Math.ceil(s.max / 2), slot2 = s.max;
         return `<div class="skl"><span style="vertical-align:middle;margin-right:4px">${aiHtml('skills', s.icon, 28)}</span><b>${esc(s.n)}</b> <span class="pill">${s.active ? 'ใช้งาน' : 'พาสซีฟ'} · Lv${s.max}${s.cd ? ' · CD ' + s.cd + 's' : ''}</span><small>${esc(s.d)}</small>
-          <small style="display:block;margin-top:4px">🧿 รูนแนะนำ: ${rec.map((r2) => `<span class="pill" title="${esc(RUNE_INFO[r2.n]?.d || '')}" style="${r2.star ? 'border-color:var(--acc);color:var(--acc)' : ''}">${r2.star ? '⭐ ' : ''}รูน${r2.n}</span>`).join(' ')} <span class="hint">(ช่อง 1 เปิด Lv${slot1} · ช่อง 2 เปิด Lv${slot2})</span></small></div>`;
+          <small style="display:block;margin-top:4px">🧿 รูนแนะนำ: ${rec.map(runeChipHtml).join(' ')} <span class="hint">(ช่อง 1 เปิด Lv${slot1} · ช่อง 2 เปิด Lv${slot2})</span></small></div>`;
       }).join('')}
       <h3 style="margin:10px 0 4px">อาวุธที่เสริมสายนี้ ${lv ? `<small class="hint">(⭐ = ดีที่สุดที่ Lv ${lv})</small>` : ''}</h3>
       ${ws.length ? ws.slice(0, 6).map((w) => { const c = wepCard(w, w.wsk.find((b) => b[1] === j.id && skIds.has(b[0]))); return w.id === lineStar ? c.replace('<div class="nm"', '<span class="tag r-legend" style="margin-left:6px">⭐ แนะนำ Lv ' + lv + '</span><div class="nm"') : c; }).join('') : '<span class="hint">ยังไม่มีอาวุธที่เสริมสายนี้ในข้อมูล</span>'}
@@ -263,11 +271,11 @@ function drawLines() {
 /* --- all weapons sorted by level --- */
 function drawWeapons() {
   const onlyWsk = $('#gOnlyWsk').checked, ft = gWt.value, fe = gEl.value;
-  let ws = D.weapons.slice(); // แสดงการ์ดทั้งหมด — ของอาชีพอื่นจะเป็นสีเทา
+  let ws = D.weapons.filter((w) => cur.wts.includes(w.wt)); // เฉพาะอาวุธของอาชีพที่เลือก
   if (ft) ws = ws.filter((w) => w.wt === ft);
   if (fe) ws = ws.filter((w) => w.el === fe);
   if (onlyWsk) ws = ws.filter((w) => w.wsk && w.wsk.some((b) => b[1] === cur.job.id));
-  ws.sort((a, b) => (cur.wts.includes(b.wt) - cur.wts.includes(a.wt)) || a.lv - b.lv || (b.atk - a.atk));
+  ws.sort((a, b) => a.lv - b.lv || (b.atk - a.atk));
   const lv = +gLv.value;
   const KR = { L: 0, B: 1, C: 2, D: 3 };
   const stars = new Set();
@@ -280,13 +288,10 @@ function drawWeapons() {
     })[0];
     if (pick) stars.add(pick.id);
   }
-  $('#gWeaponsBox').innerHTML = `<p class="hint">🎨 <span style="color:var(--acc2)">สีปกติ = ใช้ได้กับ ${esc(cur.job.n)}</span> · สีเทา = อาวุธของอาชีพอื่น · ⭐ = แนะนำที่สวมได้ตอน Lv ${lv} (แยกตามประเภท)</p>` + ws.map((w) => {
-    const jobOk = cur.wts.includes(w.wt);
-    const wsk = jobOk && w.wsk && w.wsk.find((b) => b[1] === cur.job.id);
-    let c = wepCard(w, jobOk ? wsk : null);
-    c = c.replace('class="wep"', `class="wep ${jobOk ? 'ok' : 'dim'}"`);
-    if (jobOk && stars.has(w.id)) c = c.replace('<div class="nm"', `<span class="tag r-legend" style="margin-left:6px">⭐ แนะนำ Lv ${lv}</span><div class="nm"`);
-    if (!jobOk) c = c.replace('<div class="drop"', '<div class="drop"').replace('</div>${cmpBtn(w)}</div>', '</div>${cmpBtn(w)}</div>');
+  $('#gWeaponsBox').innerHTML = `<p class="hint">⭐ = อาวุธแนะนำที่สวมได้ตอน Lv ${lv} (แยกตามประเภท) · กดการ์ดเพื่อดูแหล่งดรอป</p>` + ws.map((w) => {
+    const wsk = w.wsk && w.wsk.find((b) => b[1] === cur.job.id);
+    let c = wepCard(w, wsk);
+    if (stars.has(w.id)) c = c.replace('<div class="nm"', `<span class="tag r-legend" style="margin-left:6px">⭐ แนะนำ Lv ${lv}</span><div class="nm"`);
     return c;
   }).join('') || '<p class="hint">ไม่พบอาวุธตามเงื่อนไข</p>';
 }
@@ -589,9 +594,20 @@ document.addEventListener('click', (e) => {
 });
 function openModal(id) {
   const B = $('#modalBody');
-  if (id.startsWith('rune:')) {
+  if (id.startsWith('runeS2:')) {
+    const name = id.slice(7);
+    const info = RUNE_INFO[name];
+    $('#modalBody').innerHTML = `<h2>🧿 รูน${esc(name)}</h2>
+      <div class="kv">
+        <dt>ประเภท</dt><dd>รูนซีซัน 2${info && info.el ? ' · ธาตุ ' + esc(info.el) : ''}</dd>
+        <dt>ผล (I/II/III)</dt><dd>${info ? esc(info.d) : '–'}</dd>
+        <dt>ใส่ได้กับ</dt><dd>สกิลทุกชนิดที่มีช่องรูน (ช่อง 1 เปิดที่ครึ่งหนึ่งของเลเวลสูงสุดของสกิล, ช่อง 2 ที่เลเวลสูงสุด · ตีปกติเปิดที่ Lv 40 และ 70)</dd>
+        <dt>แหล่งที่ได้</dt><dd>รูนซีซัน 2 นี้ไม่มีข้อมูลมอนที่ดรอปโดยตรงในวิกิ — ได้จากการหลอมวัสดุรูน (bl_rune_*) จากบอส/เหมืองตามระบบสกิลชีวิตและดันเจี้ยนลึก · ดูรายละเอียดในแท็บ "ตีบวก & ออฟ"</dd>
+      </div>
+      <p class="note">กติกา: ทุกอย่างที่รูนเพิ่มรวมกันได้สูงสุด +50% ต่อการโจมตี · ถอดรูนออกฟรี</p>`;
+  } else if (id.startsWith('rune:')) {
     const r = D.runes.find((x) => x.id === id.slice(5));
-    B.innerHTML = `<h2>🃏 รูน ${esc(r.n.replace(/^รูน /, ''))}</h2><table class="src"><tr><th>มอนที่ดรอป</th><th>เลเวล</th><th>โอกาส</th><th>แมพ · เขต</th></tr>${r.droppers.map((d) => d.maps.map((m, i) => `<tr>${i === 0 ? `<td rowspan="${d.maps.length}">${esc(d.monN)}</td><td rowspan="${d.maps.length}">${d.lv}</td><td rowspan="${d.maps.length}">${pct(d.chance)}</td>` : ''}<td>${esc(m.n)} · ${esc(m.region)}</td></tr>`).join('')).join('')}</table>`;
+    B.innerHTML = `<h2>🃏 รูน${esc(r.n.replace(/^รูน/, ''))}</h2><table class="src"><tr><th>มอนที่ดรอป</th><th>เลเวล</th><th>โอกาส</th><th>แมพ · เขต</th></tr>${r.droppers.map((d) => d.maps.map((m, i) => `<tr>${i === 0 ? `<td rowspan="${d.maps.length}">${esc(d.monN)}</td><td rowspan="${d.maps.length}">${d.lv}</td><td rowspan="${d.maps.length}">${pct(d.chance)}</td>` : ''}<td>${esc(m.n)} · ${esc(m.region)}</td></tr>`).join('')).join('')}</table>`;
   } else if (id.startsWith('set:')) {
     const s = D.sets.find((x) => x.id === id.slice(4));
     B.innerHTML = `<h2>${esc(s.n)}</h2><div class="kv"><dt>สาย</dt><dd>${LINE_TH[s.line] || s.line} · Lv ${s.lv}</dd><dt>ชิ้นส่วน</dt><dd>${s.pcs.map((p) => esc(p.n)).join(' + ')}</dd><dt>โบนัส 2 ชิ้น</dt><dd>${esc(s.b2)}</dd><dt>โบนัส 3 ชิ้น</dt><dd>${esc(s.b3)}</dd><dt>พาสซีฟเซ็ตเต็ม</dt><dd>${esc(s.pas) || '–'}</dd></div>${setSrcTable(s)}`;

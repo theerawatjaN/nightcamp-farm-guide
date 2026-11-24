@@ -130,6 +130,10 @@ table.src th{color:var(--tx2);font-weight:600}
 .siminfo .eff .ok{color:var(--grn)} .siminfo .eff .bad{color:var(--red)} .siminfo .eff .mid{color:var(--tx2)}
 
 /* gear UI (แบบหน้าจอในเกม) */
+.runechip{cursor:pointer}
+.runechip:hover{border-color:var(--acc2);color:var(--acc2)}
+.runechip.star{border-color:var(--acc);color:var(--acc)}
+.runechip.craft{border-style:dashed}
 .gearui{display:grid;grid-template-columns:1fr minmax(200px,240px) 1fr;gap:10px;align-items:start}
 @media(max-width:760px){.gearui{grid-template-columns:1fr 1fr}.gearcenter{grid-column:1/-1;order:-1}}
 .gearcol{display:flex;flex-direction:column;gap:8px}
