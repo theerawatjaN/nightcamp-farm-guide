@@ -1407,7 +1407,10 @@ function searchifySelect(sel) {
   sel.style.display = 'none';
   const wrap = document.createElement('span');
   wrap.className = 'scombo';
-  sel.parentNode.insertBefore(wrap, sel);
+  // ถ้า select อยู่ใน <label> ให้เอา combo ออกมาไว้นอก label (กัน label activation เปิดแผงซ้ำหลังเลือก)
+  const labelEl = sel.closest('label');
+  if (labelEl && labelEl.parentNode) labelEl.parentNode.insertBefore(wrap, labelEl.nextSibling);
+  else sel.parentNode.insertBefore(wrap, sel);
   wrap.appendChild(sel); // ย้าย select เข้าไปใน combo เพื่อให้หาได้ง่าย
   const btn = document.createElement('input');
   btn.type = 'text'; btn.className = 'comboinput'; btn.placeholder = '🔍 ค้นหา…'; btn.autocomplete = 'off'; btn.setAttribute('autocomplete', 'off');
